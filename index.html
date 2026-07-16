@@ -399,6 +399,7 @@ onAuthStateChanged(auth, async (user) => {
 
   if (ADMINS.includes(email)) {
     gate.style.display = 'none';
+    appShell.classList.remove('hidden');
     appShell.style.display = 'flex';
     signoutBtn.style.display = 'block';
     document.getElementById('user-chip').textContent = user.displayName || email;
@@ -411,6 +412,7 @@ onAuthStateChanged(auth, async (user) => {
   const approvedDoc = await getDoc(doc(db, 'approved_emails', email));
   if (approvedDoc.exists()) {
     gate.style.display = 'none';
+    appShell.classList.remove('hidden');
     appShell.style.display = 'flex';
     signoutBtn.style.display = 'block';
     document.getElementById('user-chip').textContent = user.displayName || email;
