@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Enterprise Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1B3254;--navy2:#24447A;--blue:#2563EB;--blue-lt:#EFF6FF;
+  --bg:#F1F5F9;--surface:#fff;--border:#DDE3EF;
+  --text:#1A2636;--muted:#64748B;
+  --green:#166534;--green-bg:#DCFCE7;
+  --amber:#92400E;--amber-bg:#FEF3C7;
+  --red:#991B1B;--red-bg:#FEE2E2;
+  --shadow:0 1px 4px rgba(0,0,0,.08);--radius:8px;
+  font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--text);
+}
+body{background:var(--bg);min-height:100vh}
+.hidden{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+.na{color:var(--muted)}
+
+/* ── Auth Gate ── */
+.auth-gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
+.auth-card{background:var(--surface);border-radius:14px;padding:40px 36px;max-width:380px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.10)}
+.auth-logo{margin-bottom:20px}
+.auth-logo .logo-icon{font-size:36px;margin-bottom:10px}
+.auth-logo h1{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.auth-logo p{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 16px;border-radius:6px;font-size:13px;font-weight:600;
+  cursor:pointer;border:none;transition:.15s;white-space:nowrap}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover{background:var(--navy2)}
+.btn-full{width:100%}
+.btn-sm{padding:4px 11px;font-size:12px}
+.btn-green{background:#15803D;color:#fff}.btn-green:hover{background:#166534}
+.btn-red{background:#DC2626;color:#fff}.btn-red:hover{background:var(--red)}
+.btn-amber{background:#D97706;color:#fff}.btn-amber:hover{background:var(--amber)}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text)}.btn-ghost:hover{background:var(--bg)}
+.btn-logout{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-logout:hover{background:rgba(255,255,255,.2)}
+
+/* ── Shell ── */
+#app-shell{display:none;flex-direction:column;min-height:100vh}
+.topbar{background:var(--navy);color:#fff;display:flex;align-items:center;
+  justify-content:space-between;padding:0 24px;height:56px;
+  box-shadow:0 2px 8px rgba(0,0,0,.22);position:sticky;top:0;z-index:100}
+.topbar-brand h1{font-size:15px;font-weight:700;display:inline}
+.topbar-brand span{font-size:11px;background:rgba(255,255,255,.14);
+  padding:2px 8px;border-radius:10px;letter-spacing:.04em;margin-left:8px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-nav{display:flex;gap:4px}
+.topbar-nav button{background:transparent;border:none;color:rgba(255,255,255,.72);
+  padding:6px 13px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:.15s}
+.topbar-nav button.active,.topbar-nav button:hover{background:rgba(255,255,255,.14);color:#fff}
+.user-chip{font-size:12px;opacity:.8}
+
+/* ── Page ── */
+.page{padding:24px;max-width:1440px;margin:0 auto;width:100%}
+
+/* ── Filters ── */
+.filters-bar{background:var(--surface);border-radius:var(--radius);padding:14px 18px;
+  display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;
+  box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:18px}
+.f-grp{display:flex;flex-direction:column;gap:4px;min-width:160px}
+.f-grp label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.f-grp select{padding:7px 28px 7px 10px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:13px;color:var(--text);background:var(--bg);cursor:pointer;outline:none;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748B'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;transition:.15s}
+.f-grp select:focus{border-color:var(--blue)}
+.data-ts{font-size:11px;color:var(--muted);margin-left:auto;align-self:center}
+
+/* ── KPI Cards ── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+.kpi-card{background:var(--surface);border-radius:var(--radius);padding:15px 17px;
+  box-shadow:var(--shadow);border:1px solid var(--border);border-left:4px solid var(--blue)}
+.kpi-card.g{border-left-color:#16A34A}
+.kpi-card.a{border-left-color:#D97706}
+.kpi-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.kpi-val{font-size:21px;font-weight:700;line-height:1.1}
+
+/* ── Table Card ── */
+.table-card{background:var(--surface);border-radius:var(--radius);
+  box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.table-card-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:13px 17px;border-bottom:1px solid var(--border)}
+.table-card-hdr h2{font-size:13px;font-weight:600}
+.table-card-hdr span{font-size:12px;color:var(--muted)}
+.tbl-wrap{overflow-x:auto}
+table.main{width:100%;border-collapse:collapse}
+table.main thead tr{background:var(--navy)}
+table.main thead th{padding:10px 13px;text-align:right;font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.88);letter-spacing:.04em;white-space:nowrap}
+table.main thead th:first-child{text-align:left;min-width:260px}
+table.main thead th:nth-child(2){text-align:left}
+
+.mrow{cursor:pointer;transition:background .1s}
+.mrow:hover{background:#F5F8FF}
+.mrow.open{background:var(--blue-lt)}
+.mrow td{padding:10px 13px;border-bottom:1px solid var(--border);font-size:13px;text-align:right;vertical-align:middle}
+.mrow td:first-child{text-align:left}
+.mrow td:nth-child(2){text-align:left}
+.mrow.open td{border-bottom-color:#BFDBFE}
+
+.chevron{display:inline-block;font-size:10px;color:var(--muted);margin-right:7px;
+  transition:transform .18s;user-select:none}
+.chevron.open{transform:rotate(90deg)}
+.model-lbl{font-weight:600;color:var(--navy)}
+.brand-pill{display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;
+  border-radius:10px;background:#E8EEF7;color:var(--navy2);margin-left:6px;vertical-align:middle}
+
+.drows td{padding:0!important;border:none!important}
+.day-inner{width:100%;border-collapse:collapse}
+.day-inner thead tr{background:#EEF2FB}
+.day-inner thead th{padding:7px 13px;font-size:11px;font-weight:600;color:var(--navy);
+  text-align:right;letter-spacing:.03em}
+.day-inner thead th:first-child{text-align:left;padding-left:44px}
+.day-inner tbody tr{border-bottom:1px solid var(--border)}
+.day-inner tbody tr:last-child{border-bottom:2px solid #BFDBFE}
+.day-inner tbody tr:hover{background:#EDF2FB}
+.day-inner tbody td{padding:7px 13px;font-size:12px;text-align:right}
+.day-inner tbody td:first-child{text-align:left;padding-left:44px;color:var(--muted);font-weight:500}
+
+/* ── Admin Panel ── */
+.section-hdr{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;justify-content:center;
+  min-width:20px;height:20px;padding:0 5px;border-radius:10px;font-size:11px;font-weight:700;
+  background:var(--blue);color:#fff}
+.badge.o{background:#D97706}
+.utbl{width:100%;border-collapse:collapse;background:var(--surface);
+  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border)}
+.utbl thead tr{background:var(--navy)}
+.utbl thead th{padding:9px 13px;text-align:left;font-size:11px;font-weight:600;color:rgba(255,255,255,.88)}
+.utbl tbody tr{border-bottom:1px solid var(--border)}
+.utbl tbody tr:last-child{border-bottom:none}
+.utbl tbody tr:hover{background:var(--bg)}
+.utbl tbody td{padding:9px 13px;font-size:13px}
+.chip{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600}
+.chip.pending{background:var(--amber-bg);color:var(--amber)}
+.chip.approved{background:var(--green-bg);color:var(--green)}
+.chip.rejected{background:var(--red-bg);color:var(--red)}
+.chip.revoked{background:#F3F4F6;color:#6B7280}
+.actions{display:flex;gap:5px;flex-wrap:wrap}
+.admin-section{margin-bottom:26px}
+.empty{padding:36px;text-align:center;color:var(--muted);font-size:13px}
+
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:580px){.kpi-row{grid-template-columns:repeat(2,1fr)};.auth-card{width:94%;padding:28px 18px}}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH ══════════════════════════════════════════════════ -->
+<div id="auth-gate" class="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon" id="auth-icon">📊</div>
+      <h1 id="auth-title">Enterprise Performance</h1>
+      <p id="auth-desc">Sign in with your authorized Google account to view this dashboard.</p>
+    </div>
+    <button id="auth-signin-btn" class="btn btn-primary btn-full" type="button">Sign in with Google</button>
+    <p id="auth-error" style="display:none;color:var(--red);font-size:12px;margin-top:12px;text-align:center"></p>
+    <div id="auth-pending-info" style="display:none;background:var(--amber-bg);border:1px solid #FCA5A5;border-radius:6px;padding:12px;margin-top:14px;font-size:12px;color:var(--amber);line-height:1.6;text-align:left"></div>
+  </div>
+</div>
+<button id="auth-signout-btn" style="display:none;position:fixed;top:12px;right:16px;font-size:12px;color:#888;background:#fff;border:1px solid var(--border);border-radius:20px;padding:6px 14px;cursor:pointer;z-index:999" type="button">Sign out</button>
+
+<!-- Admin requests panel -->
+<div id="req-panel" style="display:none;position:fixed;bottom:20px;right:20px;width:360px;background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.15);z-index:998;overflow:hidden">
+  <div id="req-panel-header" style="background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+    <span style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px">Access Requests <span id="req-badge" style="background:#fff;color:var(--navy);border-radius:20px;padding:1px 8px;font-size:12px;font-weight:700">0</span></span>
+    <span id="req-panel-chevron" style="font-size:18px">▲</span>
+  </div>
+  <div id="req-panel-body" style="max-height:300px;overflow-y:auto"><div style="padding:20px;text-align:center;color:#bbb;font-size:13px">No pending requests</div></div>
+</div>
+
+<!-- ══ APP SHELL ═════════════════════════════════════════════ -->
+<div id="app-shell" class="hidden">
+  <header class="topbar">
+    <div class="topbar-brand">
+      <h1>Enterprise Performance</h1><span>Daily Tracker</span>
+    </div>
+    <div class="topbar-right">
+      <nav class="topbar-nav">
+        <button id="nav-dash" class="active" onclick="showView('dashboard')">Dashboard</button>
+        <button id="nav-admin" class="hidden" onclick="showView('admin')">User Management</button>
+      </nav>
+      <span class="user-chip" id="user-chip"></span>
+      <button class="btn btn-sm btn-logout" onclick="document.getElementById('auth-signout-btn').click()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- DASHBOARD VIEW -->
+  <div id="view-dashboard" class="page">
+    <div class="filters-bar">
+      <div class="f-grp">
+        <label>Month</label>
+        <select id="f-month" onchange="applyFilters()"></select>
+      </div>
+      <div class="f-grp">
+        <label>Brand</label>
+        <select id="f-brand" onchange="applyFilters()"></select>
+      </div>
+      <div class="f-grp">
+        <label>Segment</label>
+        <select id="f-seg" onchange="applyFilters()"></select>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="align-self:flex-end" onclick="resetFilters()">Reset</button>
+      <span class="data-ts" id="data-ts"></span>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card">   <div class="kpi-lbl">Total Spends</div>   <div class="kpi-val num" id="k-spends">—</div></div>
+      <div class="kpi-card g"> <div class="kpi-lbl">Total Leads</div>    <div class="kpi-val num" id="k-leads">—</div></div>
+      <div class="kpi-card">   <div class="kpi-lbl">Triggered Leads</div><div class="kpi-val num" id="k-trig">—</div></div>
+      <div class="kpi-card a"> <div class="kpi-lbl">CPL</div>            <div class="kpi-val num" id="k-cpl">—</div></div>
+      <div class="kpi-card a"> <div class="kpi-lbl">TCPL</div>           <div class="kpi-val num" id="k-tcpl">—</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-hdr">
+        <h2>Model Performance</h2>
+        <span id="tbl-meta">Click a row to expand day-wise data</span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="main">
+          <thead><tr>
+            <th>Model</th><th>Segment</th>
+            <th>Spends</th><th>Leads</th><th>Triggered</th><th>CPL</th><th>TCPL</th>
+          </tr></thead>
+          <tbody id="main-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN VIEW -->
+  <div id="view-admin" class="page hidden">
+    <div class="admin-section">
+      <div class="section-hdr">Pending Requests <span class="badge o hidden" id="pending-badge"></span></div>
+      <div id="pending-tbl"></div>
+    </div>
+    <div class="admin-section">
+      <div class="section-hdr">All Users <span class="badge hidden" id="all-badge"></span></div>
+      <div id="all-tbl"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EMBEDDED DATA (auto-replaced by Apps Script) ══════════ -->
+<script>
+var DATA_RAW = [];
+</script>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAch2mNDt8dygEX3WiYRMj82b619nA2pYE",
+  authDomain: "marketing-dashboard-3e114.firebaseapp.com",
+  projectId: "marketing-dashboard-3e114",
+  storageBucket: "marketing-dashboard-3e114.firebasestorage.app",
+  messagingSenderId: "31546376163",
+  appId: "1:31546376163:web:9140538022a940a106ead6"
+};
+
+const ADMINS = ["deepanshi.ahuja@girnarsoft.com", "neeraj.khichi@girnarsoft.com"];
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+const gate       = document.getElementById('auth-gate');
+const appShell   = document.getElementById('app-shell');
+const signinBtn  = document.getElementById('auth-signin-btn');
+const errorEl    = document.getElementById('auth-error');
+const signoutBtn = document.getElementById('auth-signout-btn');
+const pendingInfo= document.getElementById('auth-pending-info');
+const authIcon   = document.getElementById('auth-icon');
+const authTitle  = document.getElementById('auth-title');
+const authDesc   = document.getElementById('auth-desc');
+const reqPanel   = document.getElementById('req-panel');
+const reqBody    = document.getElementById('req-panel-body');
+const reqBadge   = document.getElementById('req-badge');
+
+let reqUnsubscribe = null;
+
+// Collapse/expand admin panel
+document.getElementById('req-panel-header').addEventListener('click', () => {
+  const open = reqBody.style.display !== 'none';
+  reqBody.style.display = open ? 'none' : 'block';
+  document.getElementById('req-panel-chevron').textContent = open ? '▼' : '▲';
+});
+
+signinBtn.addEventListener('click', () => {
+  errorEl.style.display = 'none';
+  signinBtn.disabled = true;
+  signinBtn.textContent = 'Signing in...';
+  signInWithPopup(auth, provider).catch(err => {
+    errorEl.textContent = 'Sign-in failed: ' + err.message;
+    errorEl.style.display = 'block';
+    signinBtn.disabled = false;
+    signinBtn.textContent = 'Sign in with Google';
+  });
+});
+
+signoutBtn.addEventListener('click', () => signOut(auth));
+
+function showSignInScreen() {
+  gate.style.display = 'flex';
+  appShell.style.display = 'none';
+  signoutBtn.style.display = 'none';
+  authIcon.textContent = '📊';
+  authTitle.textContent = 'Enterprise Performance';
+  authDesc.textContent = 'Sign in with your authorized Google account to view this dashboard.';
+  signinBtn.style.display = 'block';
+  signinBtn.disabled = false;
+  signinBtn.textContent = 'Sign in with Google';
+  errorEl.style.display = 'none';
+  pendingInfo.style.display = 'none';
+}
+
+function showPendingScreen(user) {
+  gate.style.display = 'flex';
+  appShell.style.display = 'none';
+  signoutBtn.style.display = 'block';
+  authIcon.textContent = '⏳';
+  authTitle.textContent = 'Access Requested';
+  authDesc.textContent = 'Your request has been submitted to the admins for approval.';
+  signinBtn.style.display = 'none';
+  pendingInfo.style.display = 'block';
+  pendingInfo.innerHTML = `Signed in as <strong>${user.email}</strong>.<br>You will get access once an admin approves your request.`;
+}
+
+let pendingRequests = [];
+
+function startAdminListener() {
+  if (reqUnsubscribe) return;
+  const q = query(collection(db, 'access_requests'), where('status', '==', 'pending'));
+  reqUnsubscribe = onSnapshot(q, snap => {
+    pendingRequests = [];
+    snap.forEach(d => pendingRequests.push({ id: d.id, ...d.data() }));
+    pendingRequests.sort((a,b) => (a.requestedAt?.seconds||0)-(b.requestedAt?.seconds||0));
+    reqBadge.textContent = pendingRequests.length;
+    reqPanel.style.display = 'block';
+    reqBody.innerHTML = pendingRequests.length
+      ? pendingRequests.map((r,i) => {
+          const time = r.requestedAt ? new Date(r.requestedAt.seconds*1000).toLocaleString('en-IN') : '';
+          return `<div class="req-item" data-idx="${i}">
+            <img class="req-avatar" src="${r.photoURL||''}" onerror="this.style.display='none'" alt="">
+            <div class="req-info">
+              <div class="req-name">${r.name||'Unknown'}</div>
+              <div class="req-email">${r.email}</div>
+              <div class="req-time">${time}</div>
+            </div>
+            <div class="req-actions">
+              <button class="req-approve" onclick="approveReq(${i})">Approve</button>
+              <button class="req-reject"  onclick="rejectReq(${i})">Reject</button>
+            </div>
+          </div>`;
+        }).join('')
+      : '<div style="padding:20px;text-align:center;color:#bbb;font-size:13px">No pending requests</div>';
+  });
+}
+
+window.approveReq = async (idx) => {
+  const r = pendingRequests[idx]; if (!r) return;
+  document.querySelectorAll(`.req-item[data-idx="${idx}"] button`).forEach(b => b.disabled = true);
+  await setDoc(doc(db, 'approved_emails', r.id), { email: r.email, approvedAt: serverTimestamp(), approvedBy: auth.currentUser?.email||'' });
+  await updateDoc(doc(db, 'access_requests', r.id), { status: 'approved' });
+};
+
+window.rejectReq = async (idx) => {
+  const r = pendingRequests[idx]; if (!r) return;
+  document.querySelectorAll(`.req-item[data-idx="${idx}"] button`).forEach(b => b.disabled = true);
+  await updateDoc(doc(db, 'access_requests', r.id), { status: 'rejected' });
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    if (reqUnsubscribe) { reqUnsubscribe(); reqUnsubscribe = null; }
+    reqPanel.style.display = 'none';
+    showSignInScreen();
+    return;
+  }
+
+  const email = (user.email||'').toLowerCase();
+
+  if (ADMINS.includes(email)) {
+    gate.style.display = 'none';
+    appShell.style.display = 'flex';
+    signoutBtn.style.display = 'block';
+    document.getElementById('user-chip').textContent = user.displayName || email;
+    document.getElementById('nav-admin').classList.remove('hidden');
+    startAdminListener();
+    initDashboard();
+    return;
+  }
+
+  const approvedDoc = await getDoc(doc(db, 'approved_emails', email));
+  if (approvedDoc.exists()) {
+    gate.style.display = 'none';
+    appShell.style.display = 'flex';
+    signoutBtn.style.display = 'block';
+    document.getElementById('user-chip').textContent = user.displayName || email;
+    initDashboard();
+    return;
+  }
+
+  const reqDoc = await getDoc(doc(db, 'access_requests', email));
+  if (reqDoc.exists() && reqDoc.data().status === 'rejected') {
+    gate.style.display = 'flex';
+    appShell.style.display = 'none';
+    signoutBtn.style.display = 'block';
+    authIcon.textContent = '🚫';
+    authTitle.textContent = 'Access Denied';
+    authDesc.textContent = 'Your access request was not approved. Contact an admin.';
+    signinBtn.style.display = 'none';
+    pendingInfo.style.display = 'block';
+    pendingInfo.innerHTML = `Signed in as <strong>${user.email}</strong>.<br>Contact an admin if you think this is a mistake.`;
+    return;
+  }
+
+  // Submit access request
+  await setDoc(doc(db, 'access_requests', email), {
+    email: user.email,
+    name: user.displayName||'',
+    photoURL: user.photoURL||'',
+    requestedAt: serverTimestamp(),
+    status: 'pending'
+  }, { merge: true });
+
+  showPendingScreen(user);
+});
+</script>
+
+<script>
+// ── Req panel item styles (inline so no extra CSS needed) ─────────
+document.head.insertAdjacentHTML('beforeend', `<style>
+.req-item{padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:10px}
+.req-item:last-child{border-bottom:none}
+.req-avatar{width:36px;height:36px;border-radius:50%;background:#f5f5f5;flex-shrink:0;object-fit:cover}
+.req-info{flex:1;min-width:0}
+.req-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.req-email{font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.req-time{font-size:10px;color:#bbb}
+.req-actions{display:flex;gap:6px;flex-shrink:0}
+.req-approve{background:#15803D;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.req-reject{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer}
+</style>`);
+
+// ════════════════════════════════════════════════
+// DASHBOARD DATA
+// ════════════════════════════════════════════════
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+let allDayRows = [], filteredMonthRows = [], filteredDayRows = []
+
+function initDashboard() {
+  allDayRows = (DATA_RAW||[]).map(r => ({
+    ...r,
+    cpl:  r.leads>0     ? r.spends/r.leads     : 0,
+    tcpl: r.triggered>0 ? r.spends/r.triggered : 0,
+  }))
+  allDayRows.sort((a,b) => a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model)||a.day.localeCompare(b.day))
+  populateFilters(); applyFilters()
+  const ts = document.getElementById('data-ts')
+  ts.textContent = DATA_RAW&&DATA_RAW.length
+    ? DATA_RAW.length+' rows · '+[...new Set(DATA_RAW.map(r=>r.month))].join(', ')
+    : 'No data — run Apps Script to populate'
+}
+
+function aggregateToMonth(rows) {
+  const map = {}
+  for (const r of rows) {
+    const k = r.month+'|'+r.brand+'|'+r.model+'|'+r.buType
+    if (!map[k]) map[k]={month:r.month,brand:r.brand,model:r.model,buType:r.buType,spends:0,leads:0,triggered:0}
+    map[k].spends+=r.spends; map[k].leads+=r.leads; map[k].triggered+=r.triggered
+  }
+  return Object.values(map).map(r=>({...r,
+    cpl:r.leads>0?r.spends/r.leads:0,tcpl:r.triggered>0?r.spends/r.triggered:0
+  })).sort((a,b)=>a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model))
+}
+
+function unique(arr){ return [...new Set(arr)].sort() }
+function fill(id, opts) {
+  const sel=document.getElementById(id), cur=sel.value
+  sel.innerHTML='<option value="All">All</option>'+opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')
+  if(opts.includes(cur)) sel.value=cur
+}
+function populateFilters() {
+  fill('f-month', unique(allDayRows.map(r=>r.month)))
+  fill('f-brand', unique(allDayRows.map(r=>r.brand)))
+  fill('f-seg',   unique(allDayRows.map(r=>r.buType)))
+}
+function applyFilters() {
+  const month=document.getElementById('f-month').value
+  const brand=document.getElementById('f-brand').value
+  const seg=document.getElementById('f-seg').value
+  filteredDayRows=allDayRows.filter(r=>(month==='All'||r.month===month)&&(brand==='All'||r.brand===brand)&&(seg==='All'||r.buType===seg))
+  filteredMonthRows=aggregateToMonth(filteredDayRows)
+  renderKPIs(); renderTable()
+}
+function resetFilters(){
+  document.getElementById('f-month').value='All'
+  document.getElementById('f-brand').value='All'
+  document.getElementById('f-seg').value='All'
+  applyFilters()
+}
+
+const fmtINR = n => n>0 ? '₹'+Math.round(n).toLocaleString('en-IN') : '—'
+const fmtNum = n => n>0 ? Math.round(n).toLocaleString('en-IN') : '—'
+const fmtDate = d => { if(!d)return '—'; return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) }
+
+function renderKPIs() {
+  const spends=filteredMonthRows.reduce((s,r)=>s+r.spends,0)
+  const leads=filteredMonthRows.reduce((s,r)=>s+r.leads,0)
+  const trig=filteredMonthRows.reduce((s,r)=>s+r.triggered,0)
+  document.getElementById('k-spends').textContent=fmtINR(spends)
+  document.getElementById('k-leads').textContent=fmtNum(leads)
+  document.getElementById('k-trig').textContent=trig>0?Math.round(trig).toLocaleString('en-IN'):'—'
+  document.getElementById('k-cpl').textContent=leads>0?fmtINR(spends/leads):'—'
+  document.getElementById('k-tcpl').textContent=trig>0?fmtINR(spends/trig):'—'
+}
+
+const expanded = new Set()
+function renderTable() {
+  document.getElementById('tbl-meta').textContent=filteredMonthRows.length+' models · Click a row to expand day-wise data'
+  const tbody=document.getElementById('main-tbody')
+  tbody.innerHTML=''
+  if(!filteredMonthRows.length){
+    tbody.innerHTML='<tr><td colspan="7" class="empty">No data for the selected filters.</td></tr>'; return
+  }
+  for(const row of filteredMonthRows) {
+    const key=row.brand+'|'+row.model, isOpen=expanded.has(key)
+    const tr=document.createElement('tr')
+    tr.className='mrow'+(isOpen?' open':''); tr.dataset.key=key; tr.onclick=()=>toggleRow(key)
+    tr.innerHTML=`
+      <td><span class="chevron${isOpen?' open':''}" data-chev="${esc(key)}">&#9658;</span>
+          <span class="model-lbl">${esc(row.model)}</span>
+          <span class="brand-pill">${esc(row.brand)}</span></td>
+      <td>${esc(row.buType)}</td>
+      <td class="num">${fmtINR(row.spends)}</td>
+      <td class="num">${fmtNum(row.leads)}</td>
+      <td class="num">${row.triggered>0?Math.round(row.triggered).toLocaleString('en-IN'):'<span class="na">—</span>'}</td>
+      <td class="num">${fmtINR(row.cpl)}</td>
+      <td class="num">${row.tcpl>0?fmtINR(row.tcpl):'<span class="na">—</span>'}</td>`
+    tbody.appendChild(tr)
+    const dtr=document.createElement('tr')
+    dtr.className='drows'+(isOpen?'':' hidden'); dtr.dataset.key=key
+    const days=filteredDayRows.filter(d=>d.brand===row.brand&&d.model===row.model).sort((a,b)=>a.day.localeCompare(b.day))
+    dtr.innerHTML=`<td colspan="7">${buildDayTable(days)}</td>`
+    tbody.appendChild(dtr)
+  }
+}
+function buildDayTable(days) {
+  if(!days.length) return '<div class="empty">No day-wise data.</div>'
+  return `<table class="day-inner"><thead><tr><th>Date</th><th>Spends</th><th>Leads</th><th>Triggered</th><th>CPL</th><th>TCPL</th></tr></thead><tbody>`+
+    days.map(d=>`<tr><td>${fmtDate(d.day)}</td><td class="num">${fmtINR(d.spends)}</td><td class="num">${fmtNum(d.leads)}</td><td class="num">${d.triggered>0?Math.round(d.triggered).toLocaleString('en-IN'):'<span class="na">—</span>'}</td><td class="num">${fmtINR(d.cpl)}</td><td class="num">${d.tcpl>0?fmtINR(d.tcpl):'<span class="na">—</span>'}</td></tr>`).join('')+
+    `</tbody></table>`
+}
+function toggleRow(key) {
+  expanded.has(key)?expanded.delete(key):expanded.add(key)
+  document.querySelectorAll(`.mrow[data-key="${key}"]`).forEach(tr=>tr.classList.toggle('open',expanded.has(key)))
+  document.querySelectorAll(`.drows[data-key="${key}"]`).forEach(tr=>tr.classList.toggle('hidden',!expanded.has(key)))
+  document.querySelectorAll(`[data-chev="${key}"]`).forEach(el=>el.classList.toggle('open',expanded.has(key)))
+}
+
+function showView(v) {
+  document.getElementById('view-dashboard').classList.toggle('hidden',v!=='dashboard')
+  document.getElementById('view-admin').classList.toggle('hidden',v!=='admin')
+  document.getElementById('nav-dash').classList.toggle('active',v==='dashboard')
+  document.getElementById('nav-admin').classList.toggle('active',v==='admin')
+}
+</script>
+</body>
+</html>
