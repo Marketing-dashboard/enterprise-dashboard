@@ -1282,16 +1282,34 @@ function initDashboard() {
     : 'No data — run Apps Script to populate'
 }
 
+let combineSeg = true
+
 function aggregateToMonth(rows) {
   const map = {}
   for (const r of rows) {
-    const k = r.month+'|'+r.brand+'|'+r.model+'|'+r.buType
-    if (!map[k]) map[k]={month:r.month,brand:r.brand,model:r.model,buType:r.buType,spends:0,leads:0,triggered:0}
+    const k = combineSeg ? r.month+'|'+r.brand+'|'+r.model
+                         : r.month+'|'+r.brand+'|'+r.model+'|'+r.buType
+    if (!map[k]) map[k]={month:r.month,brand:r.brand,model:r.model,
+      buType: combineSeg ? 'GA + FB' : r.buType,
+      spends:0,leads:0,triggered:0}
     map[k].spends+=r.spends; map[k].leads+=r.leads; map[k].triggered+=r.triggered
   }
   return Object.values(map).map(r=>({...r,
     cpl:r.leads>0?r.spends/r.leads:0,tcpl:r.triggered>0?r.spends/r.triggered:0
   })).sort((a,b)=>a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model))
+}
+
+function aggregateDayRows(rows) {
+  if (!combineSeg) return rows
+  const map = {}
+  for (const r of rows) {
+    const k = r.brand+'|'+r.model+'|'+r.day
+    if (!map[k]) map[k]={...r, spends:0, leads:0, triggered:0}
+    map[k].spends+=r.spends; map[k].leads+=r.leads; map[k].triggered+=r.triggered
+  }
+  return Object.values(map).map(r=>({...r,
+    cpl:r.leads>0?r.spends/r.leads:0, tcpl:r.triggered>0?r.spends/r.triggered:0
+  })).sort((a,b)=>a.day.localeCompare(b.day))
 }
 
 function unique(arr){ return [...new Set(arr)].sort() }
@@ -1309,6 +1327,7 @@ function applyFilters() {
   const month=document.getElementById('f-month').value
   const brand=document.getElementById('f-brand').value
   const seg=document.getElementById('f-seg').value
+  combineSeg = seg === 'All'
   filteredDayRows=allDayRows.filter(r=>(month==='All'||r.month===month)&&(brand==='All'||r.brand===brand)&&(seg==='All'||r.buType===seg))
   filteredMonthRows=aggregateToMonth(filteredDayRows)
   renderKPIs(); renderTable()
@@ -1360,7 +1379,7 @@ function renderTable() {
     tbody.appendChild(tr)
     const dtr=document.createElement('tr')
     dtr.className='drows'+(isOpen?'':' hidden'); dtr.dataset.key=key
-    const days=filteredDayRows.filter(d=>d.brand===row.brand&&d.model===row.model).sort((a,b)=>a.day.localeCompare(b.day))
+    const days=aggregateDayRows(filteredDayRows.filter(d=>d.brand===row.brand&&d.model===row.model))
     dtr.innerHTML=`<td colspan="7">${buildDayTable(days)}</td>`
     tbody.appendChild(dtr)
   }
