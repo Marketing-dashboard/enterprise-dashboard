@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Enterprise Margin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1B3254;--navy2:#24447A;--blue:#2563EB;--blue-lt:#EFF6FF;
+  --bg:#F1F5F9;--surface:#fff;--border:#DDE3EF;
+  --text:#1A2636;--muted:#64748B;
+  --green:#166534;--green-bg:#DCFCE7;
+  --amber:#92400E;--amber-bg:#FEF3C7;
+  --red:#991B1B;--red-bg:#FEE2E2;
+  --shadow:0 1px 4px rgba(0,0,0,.08);--radius:8px;
+  font-family:'Inter',system-ui,sans-serif;font-size:13px;color:var(--text)
+}
+body{background:var(--bg);min-height:100vh}
+.hidden{display:none!important}
+
+/* Topbar */
+.topbar{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:52px;box-shadow:0 2px 8px rgba(0,0,0,.22);position:sticky;top:0;z-index:100}
+.topbar-brand h1{font-size:15px;font-weight:700;display:inline}
+.topbar-brand span{font-size:11px;background:rgba(255,255,255,.14);padding:2px 8px;border-radius:10px;margin-left:8px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.tab-nav{display:flex;gap:3px}
+.tab-btn{background:transparent;border:none;color:rgba(255,255,255,.72);padding:6px 14px;
+  border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:.15s}
+.tab-btn.active,.tab-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;
+  font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.15s}
+.btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}
+.btn-ghost:hover{background:rgba(255,255,255,.2)}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+/* Page */
+.page{padding:20px 24px;max-width:100%;display:none}
+.page.active{display:block}
+
+/* Filter bar */
+.filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px 16px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;
+  box-shadow:var(--shadow);margin-bottom:16px}
+.f-grp{display:flex;flex-direction:column;gap:3px;min-width:140px}
+.f-grp label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.f-grp select,.f-grp input{padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:12px;color:var(--text);background:var(--bg);outline:none;cursor:pointer;
+  font-family:inherit}
+.f-grp select:focus,.f-grp input:focus{border-color:var(--blue)}
+.status-chip{font-size:11px;color:var(--muted);margin-left:auto;align-self:center;white-space:nowrap}
+
+/* Summary KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.kpi-card{background:var(--surface);border-radius:var(--radius);padding:12px 14px;
+  box-shadow:var(--shadow);border:1px solid var(--border);border-left:3px solid var(--blue)}
+.kpi-card.g{border-left-color:#16A34A}.kpi-card.a{border-left-color:#D97706}.kpi-card.r{border-left-color:#DC2626}
+.kpi-lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.kpi-val{font-size:18px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+
+/* Table card */
+.table-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
+  border:1px solid var(--border);overflow:hidden}
+.table-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:11px 15px;border-bottom:1px solid var(--border)}
+.table-hdr h2{font-size:13px;font-weight:600}
+.table-hdr .meta{font-size:11px;color:var(--muted)}
+.tbl-wrap{overflow-x:auto}
+
+table.main{width:100%;border-collapse:collapse;font-size:12px}
+table.main thead tr{background:var(--navy)}
+table.main thead th{padding:9px 10px;text-align:right;font-size:10px;font-weight:600;
+  color:rgba(255,255,255,.88);letter-spacing:.04em;white-space:nowrap}
+table.main thead th:first-child,table.main thead th:nth-child(2),
+table.main thead th:nth-child(3),table.main thead th:nth-child(4){text-align:left}
+table.main thead th.editable-hdr{background:#1e4080;position:relative}
+table.main thead th.editable-hdr::after{content:'✏';font-size:9px;margin-left:3px;opacity:.7}
+
+table.main tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+table.main tbody tr:hover{background:#F5F8FF}
+table.main tbody tr.segment-bike td{background:#fffbf0}
+table.main tbody tr.segment-bike:hover td{background:#fff8e1}
+table.main tbody td{padding:8px 10px;text-align:right;vertical-align:middle}
+table.main tbody td:first-child,table.main tbody td:nth-child(2),
+table.main tbody td:nth-child(3),table.main tbody td:nth-child(4){text-align:left}
+
+/* Segment group row */
+tr.seg-group td{background:var(--navy);color:#fff;font-weight:700;font-size:11px;
+  letter-spacing:.04em;padding:6px 10px;text-align:left!important}
+
+.brand-pill{display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;
+  border-radius:8px;background:#E8EEF7;color:var(--navy2)}
+.na{color:var(--muted)}
+.pct-pos{color:#16A34A;font-weight:600}
+.pct-neg{color:#DC2626;font-weight:600}
+
+/* Editable cell */
+td.editable{cursor:pointer;position:relative}
+td.editable:hover{background:#EFF6FF!important}
+td.editable .cell-val{min-width:50px;display:inline-block}
+td.editable input{width:70px;padding:3px 6px;border:2px solid var(--blue);border-radius:4px;
+  font-size:12px;font-family:inherit;text-align:right;background:#fff;outline:none}
+td.editable.dirty .cell-val{color:var(--blue);font-weight:600}
+.save-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);
+  margin-left:4px;vertical-align:middle;opacity:0;transition:.3s}
+.save-badge.saving{opacity:1;background:#D97706}
+.save-badge.saved{opacity:1;background:#16A34A}
+
+/* Overview table */
+table.overview{width:100%;border-collapse:collapse;font-size:12px}
+table.overview thead tr{background:var(--navy)}
+table.overview thead th{padding:9px 12px;font-size:10px;font-weight:600;
+  color:rgba(255,255,255,.88);letter-spacing:.04em;white-space:nowrap;text-align:right}
+table.overview thead th:first-child,table.overview thead th:nth-child(2){text-align:left}
+table.overview tbody tr{border-bottom:1px solid var(--border)}
+table.overview tbody tr:hover{background:#F5F8FF}
+table.overview tbody td{padding:9px 12px;text-align:right}
+table.overview tbody td:first-child,table.overview tbody td:nth-child(2){text-align:left}
+table.overview tfoot tr{background:#F1F5F9;border-top:2px solid var(--border);font-weight:700}
+table.overview tfoot td{padding:9px 12px;text-align:right}
+table.overview tfoot td:first-child,table.overview tfoot td:nth-child(2){text-align:left}
+tr.ovw-seg-hdr td{background:var(--navy2);color:#fff;font-weight:700;font-size:11px;
+  padding:6px 12px;text-align:left!important;letter-spacing:.04em}
+
+/* Loading overlay */
+.loading{display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--muted);
+  flex-direction:column;gap:10px;font-size:13px}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;
+  padding:10px 18px;border-radius:8px;font-size:12px;font-weight:500;
+  opacity:0;transform:translateY(10px);transition:.3s;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <h1>Enterprise Margin Dashboard</h1><span>FY26-27</span>
+  </div>
+  <div class="topbar-right">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="showTab('month')">Month View</button>
+      <button class="tab-btn" onclick="showTab('overview')">Overview</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="refreshData()" id="refresh-btn">⟳ Refresh</button>
+  </div>
+</div>
+
+<!-- MONTH VIEW TAB -->
+<div id="tab-month" class="page active">
+  <div class="filter-bar">
+    <div class="f-grp">
+      <label>Month</label>
+      <select id="f-month" onchange="applyFilters()"></select>
+    </div>
+    <div class="f-grp">
+      <label>Segment</label>
+      <select id="f-segment" onchange="applyFilters()">
+        <option value="All">All</option>
+        <option value="Car">Car</option>
+        <option value="Bike">Bike</option>
+      </select>
+    </div>
+    <div class="f-grp">
+      <label>Channel</label>
+      <select id="f-channel" onchange="applyFilters()">
+        <option value="All">All</option>
+        <option value="Media Sales-FB">Media Sales-FB</option>
+        <option value="Media Sales-GA">Media Sales-GA</option>
+      </select>
+    </div>
+    <div class="f-grp">
+      <label>Brand</label>
+      <select id="f-brand" onchange="applyFilters()"></select>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="align-self:flex-end;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="resetFilters()">Reset</button>
+    <span class="status-chip" id="status-chip">Loading…</span>
+    <span class="save-badge" id="save-badge"></span>
+  </div>
+
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi-card"><div class="kpi-lbl">Total Spends</div><div class="kpi-val" id="k-spends">—</div></div>
+    <div class="kpi-card g"><div class="kpi-lbl">Total Leads</div><div class="kpi-val" id="k-leads">—</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Triggered (Post Val)</div><div class="kpi-val" id="k-trig">—</div></div>
+    <div class="kpi-card a"><div class="kpi-lbl">Triggered %</div><div class="kpi-val" id="k-trigpct">—</div></div>
+    <div class="kpi-card g"><div class="kpi-lbl">Revenue</div><div class="kpi-val" id="k-revenue">—</div></div>
+    <div class="kpi-card r"><div class="kpi-lbl">Avg Margin</div><div class="kpi-val" id="k-margin">—</div></div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-hdr">
+      <h2>Month Performance <span id="month-label" style="color:var(--blue);margin-left:6px"></span></h2>
+      <span class="meta" id="tbl-meta">✏ Click Sold CPL or Validation% cells to edit — saves automatically</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="main">
+        <thead>
+          <tr>
+            <th>Brand</th>
+            <th>Model</th>
+            <th>Segment</th>
+            <th>Channel</th>
+            <th class="editable-hdr">Validation %</th>
+            <th class="editable-hdr">Sold CPL</th>
+            <th>Spends</th>
+            <th>Leads</th>
+            <th>CPL</th>
+            <th>Unique Gen</th>
+            <th>Trig MS</th>
+            <th>Trig NCD</th>
+            <th>Trig Post Val</th>
+            <th>Trig %</th>
+            <th>ECPL</th>
+            <th>Revenue</th>
+            <th>Margin</th>
+          </tr>
+        </thead>
+        <tbody id="month-tbody">
+          <tr><td colspan="17"><div class="loading"><div class="spinner"></div>Loading data…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- OVERVIEW TAB -->
+<div id="tab-overview" class="page">
+  <div class="filter-bar">
+    <div class="f-grp">
+      <label>Month</label>
+      <select id="ov-month" onchange="renderOverview()"></select>
+    </div>
+    <div class="f-grp">
+      <label>Segment</label>
+      <select id="ov-segment" onchange="renderOverview()">
+        <option value="All">All</option>
+        <option value="Car">Car</option>
+        <option value="Bike">Bike</option>
+      </select>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="align-self:flex-end;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="resetOverviewFilters()">Reset</button>
+  </div>
+
+  <div class="table-card">
+    <div class="table-hdr">
+      <h2>Overview by Brand</h2>
+      <span class="meta">Aggregated across channels · Revenue & Margin reflect edited Sold CPL values</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="overview">
+        <thead>
+          <tr>
+            <th style="text-align:left">Segment</th>
+            <th style="text-align:left">Brand</th>
+            <th>Spends</th>
+            <th>Leads</th>
+            <th>CPL</th>
+            <th>Unique Gen</th>
+            <th>Trig Post Val</th>
+            <th>Trig %</th>
+            <th>Revenue</th>
+            <th>Margin</th>
+          </tr>
+        </thead>
+        <tbody id="ovw-tbody"></tbody>
+        <tfoot id="ovw-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAch2mNDt8dygEX3WiYRMj82b619nA2pYE",
+  authDomain: "marketing-dashboard-3e114.firebaseapp.com",
+  projectId: "marketing-dashboard-3e114",
+  storageBucket: "marketing-dashboard-3e114.firebasestorage.app",
+  messagingSenderId: "31546376163",
+  appId: "1:31546376163:web:9140538022a940a106ead6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window._db = db;
+window._fsDoc = doc;
+window._fsSetDoc = setDoc;
+window._fsGetDocs = getDocs;
+window._fsCollection = collection;
+window._fsOnSnapshot = onSnapshot;
+
+// Load all saved edits from Firestore on startup
+async function loadEdits() {
+  try {
+    const snap = await getDocs(collection(db, 'margin_edits'));
+    snap.forEach(d => {
+      window._edits = window._edits || {};
+      window._edits[d.id] = d.data();
+    });
+    console.log('Loaded edits:', Object.keys(window._edits||{}).length);
+    if (window._rawData) renderAll();
+  } catch(e) { console.warn('Firestore load error:', e); }
+}
+
+// Listen for real-time updates (so other users' edits appear live)
+function listenEdits() {
+  onSnapshot(collection(db, 'margin_edits'), (snap) => {
+    window._edits = window._edits || {};
+    snap.forEach(d => { window._edits[d.id] = d.data(); });
+    if (window._rawData && window._initialLoadDone) renderAll();
+  });
+}
+
+window._loadEdits = loadEdits;
+window._listenEdits = listenEdits;
+loadEdits().then(() => listenEdits());
+</script>
+
+<script>
+// ── State ─────────────────────────────────────────────────────
+window._rawData   = null; // array of row objects from sheet
+window._edits     = {};   // {rowKey: {soldCPL, validationPct}} from Firestore
+window._initialLoadDone = false;
+
+const SHEET_ID = '1BCOWyyUTVmWkVIxKzMV28oZPhBWdlWAr_S1iEYVimJI';
+const SHEET_GID = '106189819'; // Jul'26 tab
+
+// ── Helpers ───────────────────────────────────────────────────
+function pn(s) { // parse number - strip ₹, commas, %
+  if (s === undefined || s === null || s === '') return 0;
+  return parseFloat(String(s).replace(/[₹,%\s]/g,'').replace(/,/g,'')) || 0;
+}
+function fmtINR(n) { return n > 0 ? '₹' + Math.round(n).toLocaleString('en-IN') : '—'; }
+function fmtN(n)   { return n > 0 ? Math.round(n).toLocaleString('en-IN') : '—'; }
+function fmtPct(n) { return n > 0 ? Math.round(n) + '%' : '—'; }
+function esc(s)    { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function rowKey(r) { return `${r.month}|${r.brand}|${r.model}|${r.channel}`; }
+
+function showToast(msg, dur=2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── Data Loading ───────────────────────────────────────────────
+async function fetchSheetData() {
+  document.getElementById('status-chip').textContent = 'Fetching data…';
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('Sheet fetch failed: ' + resp.status);
+  const text = await resp.text();
+  return parseCSV(text);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n');
+  if (lines.length < 2) return [];
+
+  // Row 0 might be a summary row (starts with ,Jul'26)
+  // Row 1 is headers
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    if (lines[i].trim().startsWith('Brand,')) { headerIdx = i; break; }
+  }
+
+  // Extract month label from row before headers
+  let monthLabel = "Jul'26";
+  if (headerIdx > 0) {
+    const prev = parseCSVLine(lines[headerIdx - 1]);
+    const ml = prev.find(c => c && c.includes("'"));
+    if (ml) monthLabel = ml;
+  }
+
+  const headers = parseCSVLine(lines[headerIdx]);
+  const rows = [];
+
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    if (!cols[0] || cols[0].trim() === '') continue;
+    const r = {};
+    headers.forEach((h, idx) => { r[h.trim()] = (cols[idx] || '').trim(); });
+    if (!r['Brand'] || r['Brand'].startsWith('#')) continue;
+    const seg = r['Segment'] || '';
+    if (!seg || (seg !== 'Car' && seg !== 'Bike')) continue;
+
+    rows.push({
+      month:       monthLabel,
+      brand:       r['Brand'],
+      model:       r['Model'],
+      segment:     r['Segment'],
+      channel:     r['Channel'],
+      validationPct: r['Validation%'],
+      soldCPL:     r['Sold CPL'],
+      spends:      r['Spends'],
+      leads:       r['Leads'],
+      cpl:         r['CPL'],
+      uniqueGen:   r['Unique Gen'],
+      trigMS:      r['Triggered MS'],
+      trigNCD:     r['Triggered NCD'],
+      trigPostVal: r['Triggered Post Validation'],
+      trigPct:     r['Triggered %'],
+      ecpl:        r['ECPL'],
+      revenue:     r['Revenue'],
+      margin:      r['Margin'],
+    });
+  }
+  return rows;
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"' && !inQ)          { inQ = true; continue; }
+    if (line[i] === '"' && inQ && line[i+1] === '"') { cur += '"'; i++; continue; }
+    if (line[i] === '"' && inQ)           { inQ = false; continue; }
+    if (line[i] === ',' && !inQ)          { result.push(cur); cur = ''; continue; }
+    cur += line[i];
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── Computed values (apply edits override) ────────────────────
+function getRowValues(r) {
+  const key = rowKey(r);
+  const edit = (window._edits || {})[key] || {};
+  const soldCPL      = pn(edit.soldCPL      !== undefined ? edit.soldCPL      : r.soldCPL);
+  const validationPct= pn(edit.validationPct !== undefined ? edit.validationPct : r.validationPct);
+  const trigPostVal  = pn(r.trigPostVal);
+  const spends       = pn(r.spends);
+  const leads        = pn(r.leads);
+
+  // Recompute revenue and margin from edited sold CPL
+  const revenue = trigPostVal * soldCPL;
+  const margin  = revenue > 0 ? ((revenue - spends) / revenue) * 100 : 0;
+
+  return { soldCPL, validationPct, trigPostVal, spends, leads, revenue, margin,
+           cpl: pn(r.cpl), uniqueGen: pn(r.uniqueGen),
+           trigMS: pn(r.trigMS), trigNCD: pn(r.trigNCD),
+           trigPct: pn(r.trigPct), ecpl: pn(r.ecpl) };
+}
+
+// ── Filters ───────────────────────────────────────────────────
+function getMonths() {
+  if (!window._rawData) return [];
+  return [...new Set(window._rawData.map(r => r.month))].sort();
+}
+function getBrands(filtered) {
+  return ['All', ...[...new Set(filtered.map(r => r.brand))].sort()];
+}
+function populateFilters() {
+  const months = getMonths();
+  ['f-month','ov-month'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = months.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  });
+  const filtered = getFilteredRows('All','All','All');
+  const sel = document.getElementById('f-brand');
+  sel.innerHTML = getBrands(filtered).map(b => `<option>${esc(b)}</option>`).join('');
+}
+
+function getFilteredRows(month, segment, channel, brand='All') {
+  return (window._rawData || []).filter(r =>
+    (month   === 'All' || r.month   === month)   &&
+    (segment === 'All' || r.segment === segment) &&
+    (channel === 'All' || r.channel === channel) &&
+    (brand   === 'All' || r.brand   === brand)
+  );
+}
+
+function applyFilters() {
+  const month   = document.getElementById('f-month').value;
+  const segment = document.getElementById('f-segment').value;
+  const channel = document.getElementById('f-channel').value;
+  const brand   = document.getElementById('f-brand').value;
+  const rows    = getFilteredRows(month, segment, channel, brand);
+  renderKPIs(rows);
+  renderMonthTable(rows, month);
+  document.getElementById('month-label').textContent = month;
+}
+
+function resetFilters() {
+  document.getElementById('f-segment').value = 'All';
+  document.getElementById('f-channel').value = 'All';
+  document.getElementById('f-brand').value   = 'All';
+  applyFilters();
+}
+
+function resetOverviewFilters() {
+  document.getElementById('ov-segment').value = 'All';
+  renderOverview();
+}
+
+// ── KPIs ──────────────────────────────────────────────────────
+function renderKPIs(rows) {
+  let spends=0, leads=0, trig=0, revenue=0;
+  rows.forEach(r => {
+    const v = getRowValues(r);
+    spends  += v.spends;
+    leads   += v.leads;
+    trig    += v.trigPostVal;
+    revenue += v.revenue;
+  });
+  const totalLeadsForTrigPct = rows.reduce((s,r) => s + pn(r.leads), 0);
+  const margin = revenue > 0 ? ((revenue - spends) / revenue) * 100 : 0;
+
+  document.getElementById('k-spends').textContent  = fmtINR(spends);
+  document.getElementById('k-leads').textContent   = fmtN(leads);
+  document.getElementById('k-trig').textContent    = fmtN(trig);
+  document.getElementById('k-trigpct').textContent = totalLeadsForTrigPct > 0 ? Math.round(trig/totalLeadsForTrigPct*100)+'%' : '—';
+  document.getElementById('k-revenue').textContent = fmtINR(revenue);
+  document.getElementById('k-margin').textContent  = margin > 0 ? Math.round(margin)+'%' : '—';
+}
+
+// ── Month Table ───────────────────────────────────────────────
+function renderMonthTable(rows, month) {
+  const tbody = document.getElementById('month-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;padding:40px;color:var(--muted)">No data for selected filters.</td></tr>';
+    document.getElementById('tbl-meta').textContent = '0 rows';
+    return;
+  }
+
+  document.getElementById('tbl-meta').textContent = `${rows.length} rows · ✏ Click Sold CPL or Validation% to edit`;
+
+  // Group by segment
+  const bySegment = {};
+  rows.forEach(r => {
+    const seg = r.segment || 'Other';
+    if (!bySegment[seg]) bySegment[seg] = [];
+    bySegment[seg].push(r);
+  });
+
+  let html = '';
+  const segOrder = ['Car', 'Bike', 'Other'];
+  segOrder.filter(s => bySegment[s]).forEach(seg => {
+    html += `<tr class="seg-group"><td colspan="17">${esc(seg)}</td></tr>`;
+    bySegment[seg].forEach(r => {
+      const v = getRowValues(r);
+      const key = rowKey(r);
+      const edit = (window._edits || {})[key] || {};
+      const isDirtyV = edit.validationPct !== undefined;
+      const isDirtyS = edit.soldCPL !== undefined;
+      const marginClass = v.margin > 50 ? 'pct-pos' : v.margin > 20 ? '' : v.margin > 0 ? 'pct-neg' : 'na';
+      const trigPctClass = v.trigPct > 30 ? 'pct-pos' : v.trigPct > 10 ? '' : 'na';
+
+      html += `<tr class="segment-${seg.toLowerCase()}" data-key="${esc(key)}">
+        <td><span class="brand-pill">${esc(r.brand)}</span></td>
+        <td>${esc(r.model)}</td>
+        <td>${esc(r.segment)}</td>
+        <td>${esc(r.channel)}</td>
+        <td class="editable${isDirtyV?' dirty':''}" onclick="startEdit(this,'validationPct','${esc(key)}')" title="Click to edit">
+          <span class="cell-val">${v.validationPct > 0 ? Math.round(v.validationPct)+'%' : '—'}</span></td>
+        <td class="editable${isDirtyS?' dirty':''}" onclick="startEdit(this,'soldCPL','${esc(key)}')" title="Click to edit">
+          <span class="cell-val">${v.soldCPL > 0 ? '₹'+v.soldCPL.toLocaleString('en-IN') : '—'}</span></td>
+        <td>${fmtINR(v.spends)}</td>
+        <td>${fmtN(v.leads)}</td>
+        <td>${fmtINR(v.cpl)}</td>
+        <td>${fmtN(v.uniqueGen)}</td>
+        <td>${fmtN(v.trigMS)}</td>
+        <td>${v.trigNCD > 0 ? fmtN(v.trigNCD) : '<span class="na">—</span>'}</td>
+        <td>${fmtN(v.trigPostVal)}</td>
+        <td class="${trigPctClass}">${v.trigPct > 0 ? Math.round(v.trigPct)+'%' : '<span class="na">—</span>'}</td>
+        <td>${v.ecpl > 0 ? fmtINR(v.ecpl) : '<span class="na">—</span>'}</td>
+        <td>${fmtINR(v.revenue)}</td>
+        <td class="${marginClass}">${v.margin > 0 ? Math.round(v.margin)+'%' : '<span class="na">—</span>'}</td>
+      </tr>`;
+    });
+  });
+
+  tbody.innerHTML = html;
+}
+
+// ── Inline Edit ───────────────────────────────────────────────
+let _activeEdit = null;
+
+function startEdit(td, field, key) {
+  if (_activeEdit) commitEdit(_activeEdit.td, _activeEdit.field, _activeEdit.key, false);
+  const span = td.querySelector('.cell-val');
+  const edit = (window._edits || {})[key] || {};
+  const row  = window._rawData.find(r => rowKey(r) === key);
+  if (!row) return;
+  const current = edit[field] !== undefined ? edit[field]
+                : field === 'soldCPL' ? pn(row.soldCPL) : pn(row.validationPct);
+
+  const input = document.createElement('input');
+  input.type  = 'number';
+  input.value = current || '';
+  input.placeholder = field === 'soldCPL' ? 'CPL ₹' : '% Val';
+  span.style.display = 'none';
+  td.appendChild(input);
+  input.focus(); input.select();
+  _activeEdit = { td, field, key };
+
+  input.addEventListener('blur',  () => commitEdit(td, field, key, true));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commitEdit(td, field, key, true);
+    if (e.key === 'Escape') { input.remove(); span.style.display=''; _activeEdit=null; }
+  });
+}
+
+async function commitEdit(td, field, key, save) {
+  _activeEdit = null;
+  const input = td.querySelector('input');
+  if (!input) return;
+  const val = parseFloat(input.value);
+  input.remove();
+  const span = td.querySelector('.cell-val');
+  span.style.display = '';
+
+  if (!save || isNaN(val)) return;
+
+  window._edits = window._edits || {};
+  if (!window._edits[key]) window._edits[key] = {};
+  window._edits[key][field] = val;
+
+  // Update display immediately
+  const row = window._rawData.find(r => rowKey(r) === key);
+  if (row) {
+    const v = getRowValues(row);
+    span.textContent = field === 'soldCPL'
+      ? (v.soldCPL > 0 ? '₹'+v.soldCPL.toLocaleString('en-IN') : '—')
+      : (v.validationPct > 0 ? Math.round(v.validationPct)+'%' : '—');
+    td.classList.add('dirty');
+
+    // Update revenue/margin cells in same row
+    const tr = td.closest('tr');
+    if (tr) {
+      const cells = tr.querySelectorAll('td');
+      cells[15].textContent = fmtINR(v.revenue); // revenue col
+      cells[16].textContent = v.margin > 0 ? Math.round(v.margin)+'%' : '—';
+    }
+  }
+
+  // Save to Firestore
+  const badge = document.getElementById('save-badge');
+  badge.className = 'save-badge saving';
+  try {
+    if (window._db) {
+      await window._fsSetDoc(window._fsDoc(window._db, 'margin_edits', key),
+        window._edits[key], { merge: true });
+    }
+    badge.className = 'save-badge saved';
+    showToast('Saved ✓');
+    setTimeout(() => badge.className = 'save-badge', 2000);
+    // Refresh KPIs
+    applyFilters();
+  } catch(e) {
+    badge.className = 'save-badge';
+    showToast('Save failed — check connection');
+    console.error(e);
+  }
+}
+
+// ── Overview (pivot by brand) ────────────────────────────────
+function renderOverview() {
+  const month   = document.getElementById('ov-month').value;
+  const segment = document.getElementById('ov-segment').value;
+  const rows    = getFilteredRows(month, segment, 'All');
+
+  // Aggregate by segment + brand
+  const map = {};
+  rows.forEach(r => {
+    const v = getRowValues(r);
+    const k = r.segment + '|' + r.brand;
+    if (!map[k]) map[k] = { segment: r.segment, brand: r.brand,
+      spends:0, leads:0, uniqueGen:0, trigPostVal:0, revenue:0 };
+    map[k].spends      += v.spends;
+    map[k].leads       += v.leads;
+    map[k].uniqueGen   += v.uniqueGen;
+    map[k].trigPostVal += v.trigPostVal;
+    map[k].revenue     += v.revenue;
+  });
+
+  const groups = Object.values(map).sort((a,b) =>
+    a.segment.localeCompare(b.segment) || a.brand.localeCompare(b.brand));
+
+  let html = ''; let totSpends=0,totLeads=0,totUG=0,totTrig=0,totRev=0;
+  const segOrder = ['Car','Bike','Other'];
+  let lastSeg = null;
+
+  groups.forEach(g => {
+    if (g.segment !== lastSeg) {
+      html += `<tr class="ovw-seg-hdr"><td colspan="10">${esc(g.segment)}</td></tr>`;
+      lastSeg = g.segment;
+    }
+    const margin = g.revenue > 0 ? ((g.revenue - g.spends) / g.revenue) * 100 : 0;
+    const cpl    = g.leads > 0 ? g.spends / g.leads : 0;
+    const trigPct= g.leads > 0 ? (g.trigPostVal / g.leads) * 100 : 0;
+    const mClass = margin > 50 ? 'pct-pos' : margin > 20 ? '' : margin > 0 ? 'pct-neg' : 'na';
+    totSpends+=g.spends; totLeads+=g.leads; totUG+=g.uniqueGen; totTrig+=g.trigPostVal; totRev+=g.revenue;
+
+    html += `<tr>
+      <td>${esc(g.segment)}</td>
+      <td><strong>${esc(g.brand)}</strong></td>
+      <td>${fmtINR(g.spends)}</td>
+      <td>${fmtN(g.leads)}</td>
+      <td>${fmtINR(cpl)}</td>
+      <td>${fmtN(g.uniqueGen)}</td>
+      <td>${fmtN(g.trigPostVal)}</td>
+      <td>${trigPct > 0 ? Math.round(trigPct)+'%' : '—'}</td>
+      <td>${fmtINR(g.revenue)}</td>
+      <td class="${mClass}">${margin > 0 ? Math.round(margin)+'%' : '—'}</td>
+    </tr>`;
+  });
+
+  const totMargin = totRev > 0 ? ((totRev - totSpends) / totRev) * 100 : 0;
+  const totCPL    = totLeads > 0 ? totSpends / totLeads : 0;
+  const totTrigPct= totLeads > 0 ? (totTrig / totLeads) * 100 : 0;
+
+  document.getElementById('ovw-tbody').innerHTML = html;
+  document.getElementById('ovw-tfoot').innerHTML = `<tr>
+    <td colspan="2"><strong>TOTAL</strong></td>
+    <td>${fmtINR(totSpends)}</td>
+    <td>${fmtN(totLeads)}</td>
+    <td>${fmtINR(totCPL)}</td>
+    <td>${fmtN(totUG)}</td>
+    <td>${fmtN(totTrig)}</td>
+    <td>${totTrigPct > 0 ? Math.round(totTrigPct)+'%' : '—'}</td>
+    <td>${fmtINR(totRev)}</td>
+    <td>${totMargin > 0 ? Math.round(totMargin)+'%' : '—'}</td>
+  </tr>`;
+}
+
+// ── Tab switching ─────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'overview') renderOverview();
+}
+
+// ── Refresh ───────────────────────────────────────────────────
+async function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  btn.textContent = '⟳ Loading…'; btn.disabled = true;
+  try {
+    const data = await fetchSheetData();
+    window._rawData = data;
+    window._initialLoadDone = true;
+    populateFilters();
+    renderAll();
+    document.getElementById('status-chip').textContent =
+      `${data.length} rows · Updated ${new Date().toLocaleTimeString('en-IN')}`;
+    showToast('Data refreshed ✓');
+  } catch(e) {
+    document.getElementById('status-chip').textContent = 'Load failed — check sheet access';
+    showToast('Failed to load: ' + e.message, 4000);
+    console.error(e);
+  }
+  btn.textContent = '⟳ Refresh'; btn.disabled = false;
+}
+
+function renderAll() {
+  applyFilters();
+  renderOverview();
+}
+
+window.showTab   = showTab;
+window.applyFilters = applyFilters;
+window.resetFilters = resetFilters;
+window.resetOverviewFilters = resetOverviewFilters;
+window.startEdit = startEdit;
+window.refreshData = refreshData;
+window.renderOverview = renderOverview;
+
+// ── Init ───────────────────────────────────────────────────────
+(async function init() {
+  try {
+    const data = await fetchSheetData();
+    window._rawData = data;
+    window._initialLoadDone = true;
+    populateFilters();
+    renderAll();
+    document.getElementById('status-chip').textContent =
+      `${data.length} rows · ${new Date().toLocaleTimeString('en-IN')}`;
+  } catch(e) {
+    document.getElementById('status-chip').textContent = '⚠ Load failed — click Refresh';
+    document.getElementById('month-tbody').innerHTML =
+      `<tr><td colspan="17" style="text-align:center;padding:40px;color:var(--red)">
+        Could not load sheet data. Make sure you are logged into Google and the sheet is shared.<br>
+        <button onclick="refreshData()" class="btn btn-primary" style="margin-top:12px">Try Again</button>
+      </td></tr>`;
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
