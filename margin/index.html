@@ -595,7 +595,7 @@ async function loadData(){
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
     // Triggers
-    const trigMap={};
+    const trigMap={}, segMap={};
     for(const r of parseCSV(tT)){
       const date=normalizeDate(r['Date']), fb=(r['Final_Brand']||'').trim(), fm=(r['Final_Model']||'').trim();
       let src=(r['final_source']||'').trim(); if(src==='MS_FB') src='MS-FB';
@@ -604,13 +604,15 @@ async function loadData(){
       if(!trigMap[k]) trigMap[k]=0;
       const jlr=['jlr','citroen','citroën'].some(b=>fb.toLowerCase().includes(b));
       trigMap[k]+=pn(r['Triggered'])+(jlr?pn(r['Triggered in List_ID']):0);
+      const seg=(r['Segment']||'').trim();
+      if(seg) segMap[`${date}|${fb}|${fm}`]=seg;
     }
     // Build rows
     const comboSet=new Set(), comboMeta={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
       comboSet.add(ck);
-      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:v.segment};
+      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:segMap[ck]||''};
     }
     _rows=[];
     for(const ck of [...comboSet].sort()){
