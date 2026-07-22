@@ -243,7 +243,18 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
       <label>Brand</label>
       <select id="d-brand" onchange="renderDemand()"><option value="">All Brands</option></select>
     </div>
-    <button class="reset-btn" onclick="document.getElementById('d-brand').value='';renderDemand()">Reset</button>
+    <div class="filter-group">
+      <label>Status</label>
+      <select id="d-status" onchange="renderDemand()">
+        <option value="">All Statuses</option>
+        <option value="on-track">On Track (≥80%)</option>
+        <option value="partial">Partial (50–79%)</option>
+        <option value="under">Under (&lt;50%)</option>
+        <option value="no-triggers">No Triggers</option>
+        <option value="no-demand">No Demand Set</option>
+      </select>
+    </div>
+    <button class="reset-btn" onclick="document.getElementById('d-brand').value='';document.getElementById('d-status').value='';renderDemand()">Reset</button>
   </div>
   <div style="padding:16px 20px 20px">
     <div class="demand-card">
@@ -546,7 +557,8 @@ function renderDemand() {
   const curBrand  = dBrandSel.value;
   const allBrands = [...new Set(_rows.map(r => r.brand))].filter(Boolean).sort();
   dBrandSel.innerHTML = '<option value="">All Brands</option>' + allBrands.map(b => `<option value="${b}"${b===curBrand?' selected':''}>${b}</option>`).join('');
-  const brandFilter = dBrandSel.value;
+  const brandFilter  = dBrandSel.value;
+  const statusFilter = document.getElementById('d-status').value;
 
   // Per model: total combTrig and active days (unique dates with any campaign)
   const modelStats = {};
@@ -592,12 +604,28 @@ function renderDemand() {
   demandRows.sort((a, b) => {
     const ra = sortRank(a), rb = sortRank(b);
     if (ra !== rb) return ra - rb;
-    // within same rank: on track/partial/under → sort by pct desc (best first); no demand → alphabetical
     if (ra <= 3) return b.pct - a.pct;
     return a.model.localeCompare(b.model);
   });
 
-  document.getElementById('demandMeta').textContent = `${demandRows.filter(r => r.dailyDemand !== null).length} models mapped · ${demandRows.filter(r => r.dailyDemand === null).length} unmapped`;
+  // Apply status filter
+  const visibleRows = statusFilter ? demandRows.filter(r => {
+    const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
+    const rank = sortRank(r);
+    if (statusFilter === 'on-track')   return hasDemand && r.pct >= 80;
+    if (statusFilter === 'partial')    return hasDemand && r.pct >= 50 && r.pct < 80;
+    if (statusFilter === 'under')      return hasDemand && r.pct > 0 && r.pct < 50;
+    if (statusFilter === 'no-triggers')return hasDemand && r.pct === 0;
+    if (statusFilter === 'no-demand')  return !hasDemand;
+    return true;
+  }) : demandRows;
+
+  document.getElementById('demandMeta').textContent = `${visibleRows.length} models shown · ${demandRows.filter(r => r.dailyDemand !== null).length} mapped · ${demandRows.filter(r => r.dailyDemand === null).length} unmapped`;
+
+  if (!visibleRows.length) {
+    document.getElementById('demandContainer').innerHTML = '<div class="empty">No models match the selected filters.</div>';
+    return;
+  }
 
   let html = '<table class="demand-table"><thead><tr>';
   html += '<th class="left">Model</th><th class="left">Brand</th>';
@@ -605,7 +633,7 @@ function renderDemand() {
   html += '<th style="min-width:160px">Delivery vs Demand</th><th>Status</th>';
   html += '</tr></thead><tbody>';
 
-  for (const r of demandRows) {
+  for (const r of visibleRows) {
     const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
     const pct = r.pct;
 
