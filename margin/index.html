@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Enterprise Daily Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -16,21 +20,68 @@
   --text2:#5a6475;
   --text3:#8c95a3;
   --accent:#4f6ef7;
-  --aw:#2563eb;
-  --aw-bg:#eff6ff;
-  --aw-border:#bfdbfe;
-  --fb:#f97316;
-  --fb-bg:#fff7ed;
-  --fb-border:#fed7aa;
-  --comb:#16a34a;
-  --comb-bg:#f0fdf4;
-  --comb-border:#bbf7d0;
+  --aw:#2563eb;--aw-bg:#eff6ff;--aw-border:#bfdbfe;
+  --fb:#f97316;--fb-bg:#fff7ed;--fb-border:#fed7aa;
+  --comb:#16a34a;--comb-bg:#f0fdf4;--comb-border:#bbf7d0;
   --radius:10px;
   --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 12px rgba(0,0,0,.04);
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}
 
-/* NAV */
+/* ── AUTH SCREENS ── */
+.auth-screen{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e2433 0%,#2d3650 100%)}
+.auth-card{background:#fff;border-radius:16px;padding:40px 48px;width:420px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.auth-logo{font-size:28px;font-weight:800;color:#1e2433;letter-spacing:-1px;margin-bottom:4px}
+.auth-logo span{color:#4f6ef7}
+.auth-tagline{color:#8c95a3;font-size:13px;margin-bottom:32px}
+.auth-divider{border:none;border-top:1px solid #e2e5ea;margin:24px 0}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 20px;border:1.5px solid #e2e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-weight:500;color:#1a1d23;transition:all .15s;font-family:inherit}
+.google-btn:hover{background:#f8f9fb;border-color:#4f6ef7}
+.google-btn svg{width:20px;height:20px;flex-shrink:0}
+.auth-note{margin-top:20px;font-size:11px;color:#8c95a3;line-height:1.6}
+.auth-error{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12px;margin-top:16px;display:none}
+
+/* pending/revoked screens */
+.auth-icon{font-size:48px;margin-bottom:16px}
+.auth-title{font-size:20px;font-weight:700;color:#1e2433;margin-bottom:8px}
+.auth-subtitle{color:#5a6475;font-size:13px;line-height:1.6;margin-bottom:24px}
+.auth-email-chip{display:inline-flex;align-items:center;gap:6px;background:#f0f2f5;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:500;color:#1a1d23;margin-bottom:20px}
+.auth-email-chip img{width:20px;height:20px;border-radius:50%}
+.sign-out-btn{width:100%;padding:11px;border:1.5px solid #e2e5ea;border-radius:10px;background:#fff;cursor:pointer;font-size:13px;font-weight:500;color:#5a6475;transition:all .15s;font-family:inherit}
+.sign-out-btn:hover{border-color:#dc2626;color:#dc2626}
+
+/* ── ADMIN PANEL ── */
+.admin-fab{position:fixed;bottom:24px;right:24px;z-index:200;width:48px;height:48px;border-radius:50%;background:#4f6ef7;color:#fff;border:none;cursor:pointer;font-size:20px;box-shadow:0 4px 16px rgba(79,110,247,.4);display:none;align-items:center;justify-content:center;transition:transform .15s}
+.admin-fab:hover{transform:scale(1.08)}
+.admin-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:flex-end;padding:24px}
+.admin-overlay.open{display:flex}
+.admin-panel{background:#fff;border-radius:16px;width:560px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+.admin-panel-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e2e5ea;flex-shrink:0}
+.admin-panel-title{font-size:15px;font-weight:700}
+.admin-close{background:none;border:none;cursor:pointer;color:#8c95a3;font-size:20px;line-height:1;padding:4px}
+.admin-tabs{display:flex;gap:2px;padding:12px 20px 0;border-bottom:1px solid #e2e5ea;flex-shrink:0}
+.admin-tab{padding:8px 16px;border-radius:6px 6px 0 0;cursor:pointer;font-size:12px;font-weight:500;color:#8c95a3;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.admin-tab.active{color:#4f6ef7;border-bottom-color:#4f6ef7;background:#f5f7ff}
+.admin-body{overflow-y:auto;flex:1;padding:16px 20px}
+.user-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f0f2f5}
+.user-row:last-child{border-bottom:none}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:#e2e5ea;flex-shrink:0;object-fit:cover}
+.user-avatar-placeholder{width:36px;height:36px;border-radius:50%;background:#4f6ef7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.user-info{flex:1;min-width:0}
+.user-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-email{font-size:11px;color:#8c95a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-date{font-size:10px;color:#b0b8c4;margin-top:2px}
+.user-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-approve{padding:5px 12px;background:#dcfce7;color:#15803d;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;transition:background .15s}
+.btn-approve:hover{background:#bbf7d0}
+.btn-revoke{padding:5px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;transition:background .15s}
+.btn-revoke:hover{background:#fecaca}
+.admin-empty{text-align:center;padding:32px;color:#8c95a3;font-size:12px}
+.badge-count{background:#4f6ef7;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px}
+.badge-count.red{background:#dc2626}
+
+/* ── NAV ── */
+#app{display:none}
 .nav{background:#1e2433;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .nav-left{display:flex;align-items:center;gap:16px}
 .nav-title{font-size:15px;font-weight:600;letter-spacing:.3px}
@@ -39,11 +90,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .nav-tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:#94a3b8;border:none;background:transparent;transition:all .15s}
 .nav-tab:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav-tab.active{background:#4f6ef7;color:#fff}
-.nav-right{display:flex;align-items:center;gap:12px}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-user{display:flex;align-items:center;gap:8px;cursor:pointer}
+.nav-user img{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.2)}
+.nav-user-name{font-size:12px;color:#94a3b8;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .refresh-btn{display:flex;align-items:center;gap:6px;background:#4f6ef7;color:#fff;border:none;padding:7px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s}
 .refresh-btn:hover{background:#3d5ce3}
 .refresh-btn svg{width:14px;height:14px}
 .status-chip{font-size:11px;color:#94a3b8;background:rgba(255,255,255,.07);padding:4px 10px;border-radius:20px}
+.sign-out-nav{padding:5px 10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#94a3b8;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;transition:all .15s}
+.sign-out-nav:hover{border-color:#ef4444;color:#ef4444}
 
 /* FILTERS */
 .filters{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
@@ -55,9 +111,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .date-range span{color:var(--text3);font-size:11px}
 .reset-btn{padding:6px 14px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;align-self:flex-end}
 .reset-btn:hover{border-color:var(--accent);color:var(--accent)}
-.filter-spacer{flex:1}
 
-/* KPI CARDS */
+/* KPI */
 .kpi-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:16px 20px}
 .kpi-card{background:var(--surface);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--border)}
 .kpi-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px}
@@ -70,7 +125,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .table-header-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
 .table-title{font-size:13px;font-weight:600}
 .row-count{font-size:11px;color:var(--text3)}
-
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead{position:sticky;top:52px;z-index:10}
 thead tr.group-row th{padding:8px 10px;font-weight:700;font-size:11px;text-align:center;border-bottom:1px solid var(--border)}
@@ -108,7 +162,6 @@ tfoot td.fb{background:rgba(255,247,237,.5)}
 tfoot td.comb{background:rgba(240,253,244,.5)}
 
 /* DEMAND TAB */
-#demandSection{padding:16px 20px 20px}
 .demand-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
 .demand-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
 .demand-title{font-size:13px;font-weight:600}
@@ -137,542 +190,610 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:40px;color:var(--text3)}
 
-/* TAB SECTIONS */
 #dailySection{display:block}
 #demandSection{display:none}
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav class="nav">
-  <div class="nav-left">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span class="nav-title">Enterprise Daily Tracker</span>
-      <span class="nav-badge">FY26-27</span>
-    </div>
-    <div class="nav-tabs">
-      <button class="nav-tab active" id="tab-daily" onclick="switchTab('daily')">Daily Performance</button>
-      <button class="nav-tab" id="tab-demand" onclick="switchTab('demand')">Demand vs Delivery</button>
-    </div>
-  </div>
-  <div class="nav-right">
-    <span class="status-chip" id="statusChip">Loading…</span>
-    <button class="refresh-btn" onclick="loadData()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2.69M20 15a8 8 0 0 1-14.93 2.69"/></svg>
-      Refresh
+<!-- ═══════ LOGIN SCREEN ═══════ -->
+<div id="loginScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">Girnar<span>Dash</span></div>
+    <div class="auth-tagline">Enterprise Daily Tracker · FY26-27</div>
+    <hr class="auth-divider">
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
     </button>
-  </div>
-</nav>
-
-<!-- ═══════════ DAILY PERFORMANCE SECTION ═══════════ -->
-<div id="dailySection">
-  <!-- FILTERS -->
-  <div class="filters">
-    <div class="filter-group">
-      <label>Month</label>
-      <select id="f-month" onchange="applyFilters()"><option value="">All Months</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Brand</label>
-      <select id="f-brand" onchange="applyFilters()"><option value="">All Brands</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Model</label>
-      <select id="f-model" onchange="applyFilters()"><option value="">All Models</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Date Range</label>
-      <div class="date-range">
-        <input type="date" id="f-from" onchange="applyFilters()">
-        <span>→</span>
-        <input type="date" id="f-to" onchange="applyFilters()">
-      </div>
-    </div>
-    <button class="reset-btn" onclick="resetFilters()">Reset</button>
-    <div class="filter-spacer"></div>
-  </div>
-
-  <!-- KPI CARDS -->
-  <div class="kpi-bar">
-    <div class="kpi-card">
-      <div class="kpi-label">Total Spends</div>
-      <div class="kpi-value" id="k-spends">—</div>
-      <div class="kpi-sub">Combined</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Total Leads</div>
-      <div class="kpi-value" id="k-leads">—</div>
-      <div class="kpi-sub">Combined</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Total Triggers</div>
-      <div class="kpi-value" id="k-tleads">—</div>
-      <div class="kpi-sub">Post Validation</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Avg CPL</div>
-      <div class="kpi-value" id="k-cpl">—</div>
-      <div class="kpi-sub">Combined</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Avg TCPL</div>
-      <div class="kpi-value" id="k-tcpl">—</div>
-      <div class="kpi-sub">Combined</div>
-    </div>
-  </div>
-
-  <!-- TABLE -->
-  <div class="table-wrap">
-    <div class="table-card">
-      <div class="table-header-bar">
-        <span class="table-title">Daily Performance</span>
-        <span class="row-count" id="rowCount"></span>
-      </div>
-      <div id="tableContainer">
-        <div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>
-      </div>
-    </div>
+    <div class="auth-error" id="loginError"></div>
+    <p class="auth-note">Only <strong>@girnarsoft.com</strong> accounts are allowed.<br>First-time users will need admin approval.</p>
   </div>
 </div>
 
-<!-- ═══════════ DEMAND VS DELIVERY SECTION ═══════════ -->
-<div id="demandSection">
-  <div class="filters">
-    <div class="filter-group">
-      <label>Brand</label>
-      <select id="d-brand" onchange="renderDemand()"><option value="">All Brands</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Status</label>
-      <select id="d-status" onchange="renderDemand()">
-        <option value="">All Statuses</option>
-        <option value="on-track">On Track (≥70%)</option>
-        <option value="partial">Partial (50–69%)</option>
-        <option value="under">Under (&lt;50%)</option>
-        <option value="no-triggers">No Triggers</option>
-        <option value="no-demand">No Demand Set</option>
-      </select>
-    </div>
-    <button class="reset-btn" onclick="document.getElementById('d-brand').value='';document.getElementById('d-status').value='';renderDemand()">Reset</button>
+<!-- ═══════ PENDING SCREEN ═══════ -->
+<div id="pendingScreen" class="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-icon">⏳</div>
+    <div class="auth-title">Access Requested</div>
+    <div class="auth-subtitle">Your request has been sent to the admins.<br>You'll have access once it's approved.</div>
+    <div class="auth-email-chip" id="pendingEmail"></div>
+    <button class="sign-out-btn" onclick="signOutUser()">Sign out</button>
   </div>
-  <div style="padding:16px 20px 20px">
-    <div class="demand-card">
-      <div class="demand-header">
-        <span class="demand-title">Demand vs Delivery — Model Level</span>
-        <span class="demand-meta" id="demandMeta"></span>
+</div>
+
+<!-- ═══════ REVOKED SCREEN ═══════ -->
+<div id="revokedScreen" class="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-icon">🚫</div>
+    <div class="auth-title">Access Revoked</div>
+    <div class="auth-subtitle">Your access to this dashboard has been revoked.<br>Contact an admin if you think this is a mistake.</div>
+    <div class="auth-email-chip" id="revokedEmail"></div>
+    <button class="sign-out-btn" onclick="signOutUser()">Sign out</button>
+  </div>
+</div>
+
+<!-- ═══════ MAIN APP ═══════ -->
+<div id="app">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-left">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="nav-title">Enterprise Daily Tracker</span>
+        <span class="nav-badge">FY26-27</span>
       </div>
-      <div id="demandContainer">
-        <div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" id="tab-daily"  onclick="switchTab('daily')">Daily Performance</button>
+        <button class="nav-tab"        id="tab-demand" onclick="switchTab('demand')">Demand vs Delivery</button>
       </div>
+    </div>
+    <div class="nav-right">
+      <span class="status-chip" id="statusChip">Loading…</span>
+      <button class="refresh-btn" onclick="loadData()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2.69M20 15a8 8 0 0 1-14.93 2.69"/></svg>
+        Refresh
+      </button>
+      <div class="nav-user" title="Signed in">
+        <img id="navAvatar" src="" style="display:none">
+        <span class="nav-user-name" id="navUserName"></span>
+      </div>
+      <button class="sign-out-nav" onclick="signOutUser()">Sign out</button>
+    </div>
+  </nav>
+
+  <!-- ── DAILY SECTION ── -->
+  <div id="dailySection">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Month</label>
+        <select id="f-month" onchange="applyFilters()"><option value="">All Months</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Brand</label>
+        <select id="f-brand" onchange="applyFilters()"><option value="">All Brands</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Model</label>
+        <select id="f-model" onchange="applyFilters()"><option value="">All Models</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Date Range</label>
+        <div class="date-range">
+          <input type="date" id="f-from" onchange="applyFilters()">
+          <span>→</span>
+          <input type="date" id="f-to" onchange="applyFilters()">
+        </div>
+      </div>
+      <button class="reset-btn" onclick="resetFilters()">Reset</button>
+    </div>
+    <div class="kpi-bar">
+      <div class="kpi-card"><div class="kpi-label">Total Spends</div><div class="kpi-value" id="k-spends">—</div><div class="kpi-sub">Combined</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Leads</div><div class="kpi-value" id="k-leads">—</div><div class="kpi-sub">Combined</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Triggers</div><div class="kpi-value" id="k-tleads">—</div><div class="kpi-sub">Post Validation</div></div>
+      <div class="kpi-card"><div class="kpi-label">Avg CPL</div><div class="kpi-value" id="k-cpl">—</div><div class="kpi-sub">Combined</div></div>
+      <div class="kpi-card"><div class="kpi-label">Avg TCPL</div><div class="kpi-value" id="k-tcpl">—</div><div class="kpi-sub">Combined</div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-card">
+        <div class="table-header-bar">
+          <span class="table-title">Daily Performance</span>
+          <span class="row-count" id="rowCount"></span>
+        </div>
+        <div id="tableContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DEMAND SECTION ── -->
+  <div id="demandSection">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Brand</label>
+        <select id="d-brand" onchange="renderDemand()"><option value="">All Brands</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="d-status" onchange="renderDemand()">
+          <option value="">All Statuses</option>
+          <option value="on-track">On Track (≥70%)</option>
+          <option value="partial">Partial (50–69%)</option>
+          <option value="under">Under (&lt;50%)</option>
+          <option value="no-triggers">No Triggers</option>
+          <option value="no-demand">No Demand Set</option>
+        </select>
+      </div>
+      <button class="reset-btn" onclick="document.getElementById('d-brand').value='';document.getElementById('d-status').value='';renderDemand()">Reset</button>
+    </div>
+    <div style="padding:0 20px 20px">
+      <div class="demand-card">
+        <div class="demand-header">
+          <span class="demand-title">Demand vs Delivery — Model Level</span>
+          <span class="demand-meta" id="demandMeta"></span>
+        </div>
+        <div id="demandContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<!-- ═══════ ADMIN PANEL ═══════ -->
+<button class="admin-fab" id="adminFab" onclick="openAdmin()" title="Admin Panel">⚙️</button>
+
+<div class="admin-overlay" id="adminOverlay" onclick="closeAdminIfOutside(event)">
+  <div class="admin-panel">
+    <div class="admin-panel-header">
+      <span class="admin-panel-title">🔐 Access Management</span>
+      <button class="admin-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" id="atab-pending"  onclick="switchAdminTab('pending')">Pending <span class="badge-count red" id="pendingCount" style="display:none">0</span></button>
+      <button class="admin-tab"        id="atab-approved" onclick="switchAdminTab('approved')">Approved</button>
+      <button class="admin-tab"        id="atab-revoked"  onclick="switchAdminTab('revoked')">Revoked</button>
+    </div>
+    <div class="admin-body" id="adminBody">
+      <div class="admin-empty">Loading…</div>
     </div>
   </div>
 </div>
 
 <script>
+// ══════════════════════════════════════════
+//  FIREBASE INIT
+// ══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyAch2mNDt8dygEX3WiYRMj82b619nA2pYE",
+  authDomain: "marketing-dashboard-3e114.firebaseapp.com",
+  projectId: "marketing-dashboard-3e114",
+  storageBucket: "marketing-dashboard-3e114.firebasestorage.app",
+  messagingSenderId: "31546376163",
+  appId: "1:31546376163:web:9140538022a940a106ead6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+const ADMINS   = ['deepanshi.ahuja@girnarsoft.com', 'neeraj.khich@girnarsoft.com'];
+const DOMAIN   = 'girnarsoft.com';
+const COLL     = 'access_requests';
+let   _isAdmin = false;
+let   _adminTab = 'pending';
+
+// ── AUTH STATE ──
+auth.onAuthStateChanged(async user => {
+  if (!user) { showScreen('login'); return; }
+  const email = user.email || '';
+  if (!email.endsWith('@' + DOMAIN)) {
+    showError('Only @' + DOMAIN + ' accounts are allowed.');
+    await auth.signOut(); return;
+  }
+  // Set nav user info
+  document.getElementById('navUserName').textContent = user.displayName || email.split('@')[0];
+  const av = document.getElementById('navAvatar');
+  if (user.photoURL) { av.src = user.photoURL; av.style.display = 'block'; }
+
+  if (ADMINS.includes(email)) {
+    _isAdmin = true;
+    await ensureApproved(user);
+    showScreen('app');
+    document.getElementById('adminFab').style.display = 'flex';
+    loadData();
+    return;
+  }
+  // Regular user — check Firestore
+  const ref = db.collection(COLL).doc(email);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    // First time — create pending request
+    await ref.set({ email, name: user.displayName||'', photoURL: user.photoURL||'', status:'pending', requestedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    showPendingScreen(user);
+  } else {
+    const data = snap.data();
+    if (data.status === 'approved') { showScreen('app'); loadData(); }
+    else if (data.status === 'revoked') { showRevokedScreen(user); }
+    else { showPendingScreen(user); }
+  }
+});
+
+async function ensureApproved(user) {
+  const ref  = db.collection(COLL).doc(user.email);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data().status !== 'approved') {
+    await ref.set({ email: user.email, name: user.displayName||'', photoURL: user.photoURL||'', status:'approved', isAdmin: true, requestedAt: firebase.firestore.FieldValue.serverTimestamp(), approvedAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
+  }
+}
+
+function showScreen(name) {
+  document.getElementById('loginScreen').style.display  = name==='login'   ? 'flex' : 'none';
+  document.getElementById('pendingScreen').style.display= name==='pending' ? 'flex' : 'none';
+  document.getElementById('revokedScreen').style.display= name==='revoked' ? 'flex' : 'none';
+  document.getElementById('app').style.display          = name==='app'     ? 'block': 'none';
+}
+
+function showPendingScreen(user) {
+  const chip = document.getElementById('pendingEmail');
+  chip.innerHTML = user.photoURL ? `<img src="${user.photoURL}"> ${user.email}` : user.email;
+  showScreen('pending');
+}
+function showRevokedScreen(user) {
+  const chip = document.getElementById('revokedEmail');
+  chip.innerHTML = user.photoURL ? `<img src="${user.photoURL}"> ${user.email}` : user.email;
+  showScreen('revoked');
+}
+function showError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+async function signInWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account', hd: DOMAIN });
+  try { await auth.signInWithPopup(provider); }
+  catch(e) { if (e.code !== 'auth/popup-closed-by-user') showError(e.message); }
+}
+async function signOutUser() {
+  await auth.signOut();
+  document.getElementById('adminFab').style.display = 'none';
+  _isAdmin = false;
+  showScreen('login');
+}
+
+// ══════════════════════════════════════════
+//  ADMIN PANEL
+// ══════════════════════════════════════════
+function openAdmin() {
+  document.getElementById('adminOverlay').classList.add('open');
+  loadAdminTab('pending');
+}
+function closeAdmin() { document.getElementById('adminOverlay').classList.remove('open'); }
+function closeAdminIfOutside(e) { if (e.target === document.getElementById('adminOverlay')) closeAdmin(); }
+
+function switchAdminTab(tab) {
+  _adminTab = tab;
+  ['pending','approved','revoked'].forEach(t => {
+    document.getElementById('atab-'+t).classList.toggle('active', t===tab);
+  });
+  loadAdminTab(tab);
+}
+
+async function loadAdminTab(tab) {
+  const body = document.getElementById('adminBody');
+  body.innerHTML = '<div class="admin-empty">Loading…</div>';
+  const snap = await db.collection(COLL).where('status','==',tab).get();
+  const users = [];
+  snap.forEach(d => users.push(d.data()));
+  users.sort((a,b) => {
+    const ta = a.requestedAt?.toMillis?.() || 0;
+    const tb = b.requestedAt?.toMillis?.() || 0;
+    return tb - ta;
+  });
+
+  // Update pending badge
+  if (tab === 'pending') {
+    const cnt = document.getElementById('pendingCount');
+    cnt.textContent = users.length;
+    cnt.style.display = users.length > 0 ? 'inline' : 'none';
+  }
+
+  if (!users.length) {
+    body.innerHTML = `<div class="admin-empty">No ${tab} users.</div>`;
+    return;
+  }
+
+  body.innerHTML = users.map(u => {
+    const initials = (u.name || u.email).charAt(0).toUpperCase();
+    const avatar   = u.photoURL
+      ? `<img class="user-avatar" src="${u.photoURL}">`
+      : `<div class="user-avatar-placeholder">${initials}</div>`;
+    const ts = u.requestedAt?.toDate?.()?.toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) || '';
+    const actions = tab === 'pending'
+      ? `<button class="btn-approve" onclick="approveUser('${u.email}')">Approve</button>`
+      : tab === 'approved'
+      ? `<button class="btn-revoke"  onclick="revokeUser('${u.email}')">Revoke</button>`
+      : `<button class="btn-approve" onclick="approveUser('${u.email}')">Re-approve</button>`;
+    return `<div class="user-row">${avatar}<div class="user-info"><div class="user-name">${u.name || '—'}</div><div class="user-email">${u.email}</div><div class="user-date">Requested ${ts}</div></div><div class="user-actions">${actions}</div></div>`;
+  }).join('');
+}
+
+async function approveUser(email) {
+  await db.collection(COLL).doc(email).update({ status:'approved', approvedAt: firebase.firestore.FieldValue.serverTimestamp(), approvedBy: auth.currentUser?.email||'' });
+  loadAdminTab(_adminTab);
+}
+async function revokeUser(email) {
+  await db.collection(COLL).doc(email).update({ status:'revoked', revokedAt: firebase.firestore.FieldValue.serverTimestamp(), revokedBy: auth.currentUser?.email||'' });
+  loadAdminTab(_adminTab);
+}
+
+// ══════════════════════════════════════════
+//  DASHBOARD DATA
+// ══════════════════════════════════════════
 const ENT_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=1372441356';
 const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 
-let _rows      = [];
-let _filtered  = [];
-let _demandMap = {};   // normalized model → daily demand
-let _currentTab = 'daily';
+let _rows=[], _filtered=[], _demandMap={};
 
-// ── HELPERS ──
-function pn(v) { const n = parseFloat(String(v).replace(/,/g,'')); return isNaN(n) ? 0 : n; }
-
-function parseCSV(text) {
-  const lines = text.split('\n').filter(l => l.trim());
-  if (!lines.length) return [];
-  const headers = lines[0].split(',').map(h => h.trim().replace(/\r/g,''));
-  return lines.slice(1).map(line => {
-    const cols = line.split(',');
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim().replace(/\r/g,''); });
+function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
+function parseCSV(text){
+  const lines=text.split('\n').filter(l=>l.trim());
+  if(!lines.length) return [];
+  const headers=lines[0].split(',').map(h=>h.trim().replace(/\r/g,''));
+  return lines.slice(1).map(line=>{
+    const cols=line.split(','), obj={};
+    headers.forEach((h,i)=>{ obj[h]=(cols[i]||'').trim().replace(/\r/g,''); });
     return obj;
-  }).filter(r => Object.values(r).some(v => v));
+  }).filter(r=>Object.values(r).some(v=>v));
 }
-
-const MONTH_MAP = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-function normalizeDate(d) {
-  if (!d) return '';
-  d = d.trim().replace(/\r/g,'');
-  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-  const m = d.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})$/);
-  if (m) {
-    const day = m[1].padStart(2,'0');
-    const mon = MONTH_MAP[m[2].charAt(0).toUpperCase()+m[2].slice(1,3).toLowerCase()] || '01';
-    return `${m[3]}-${mon}-${day}`;
-  }
+const MO={'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06','Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'};
+function normalizeDate(d){
+  if(!d) return '';
+  d=d.trim().replace(/\r/g,'');
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const m=d.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})$/);
+  if(m){ const mo=MO[m[2].charAt(0).toUpperCase()+m[2].slice(1,3).toLowerCase()]||'01'; return `${m[3]}-${mo}-${m[1].padStart(2,'0')}`; }
   return '';
 }
-
-function fmtDate(d) {
-  const [y, mo, da] = d.split('-');
-  const MONS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${da} ${MONS[parseInt(mo)]} '${y.slice(2)}`;
+function fmtDate(d){
+  const [y,mo,da]=d.split('-');
+  const M=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${da} ${M[parseInt(mo)]} '${y.slice(2)}`;
 }
+function fmtNum(n){ if(n===0) return '—'; if(n>=1e7) return '₹'+(n/1e7).toFixed(2)+'Cr'; if(n>=1e5) return '₹'+(n/1e5).toFixed(1)+'L'; if(n>=1e3) return '₹'+(n/1e3).toFixed(1)+'K'; return '₹'+Math.round(n).toLocaleString('en-IN'); }
+function fmtL(n){ return n===0?'—':Math.round(n).toLocaleString('en-IN'); }
+function fmtC(s,l){ return l===0?'—':'₹'+Math.round(s/l).toLocaleString('en-IN'); }
+function normModel(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
 
-function fmtNum(n) {
-  if (n === 0) return '—';
-  if (n >= 1e7) return '₹' + (n/1e7).toFixed(2) + 'Cr';
-  if (n >= 1e5) return '₹' + (n/1e5).toFixed(1) + 'L';
-  if (n >= 1e3) return '₹' + (n/1e3).toFixed(1) + 'K';
-  return '₹' + Math.round(n).toLocaleString('en-IN');
-}
-
-function fmtLeads(n) { return n === 0 ? '—' : Math.round(n).toLocaleString('en-IN'); }
-function fmtCPL(s, l) { return l === 0 ? '—' : '₹' + Math.round(s/l).toLocaleString('en-IN'); }
-
-// Normalize model name for fuzzy matching (lowercase, strip punctuation/spaces)
-function normModel(s) {
-  return (s || '').toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .replace(/\s+/g, '');
-}
-
-// ── LOAD DATA ──
-async function loadData() {
-  document.getElementById('statusChip').textContent = 'Loading…';
-  document.getElementById('tableContainer').innerHTML = '<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
-  document.getElementById('demandContainer').innerHTML = '<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
-
-  try {
-    const [entText, trigText, demText] = await Promise.all([
-      fetch(ENT_URL,    {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
-      fetch(TRIG_URL,   {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
-      fetch(DEMAND_URL, {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
+async function loadData(){
+  document.getElementById('statusChip').textContent='Loading…';
+  document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
+  document.getElementById('demandContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
+  try{
+    const [eT,tT,dT]=await Promise.all([
+      fetch(ENT_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
+      fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
+      fetch(DEMAND_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
     ]);
-
-    // ── Parse Demand tab ──
-    const demandRows = parseCSV(demText);
-    _demandMap = {};
-    for (const r of demandRows) {
-      const model = (r['Models'] || '').trim();
-      if (model) _demandMap[normModel(model)] = { raw: model, demand: pn(r['Daily Demand']) };
+    // Demand
+    _demandMap={};
+    for(const r of parseCSV(dT)){
+      const m=(r['Models']||'').trim();
+      if(m) _demandMap[normModel(m)]={raw:m,demand:pn(r['Daily Demand'])};
     }
-
-    // ── Parse Enterprise_Raw ──
-    const entRows = parseCSV(entText);
-    const entMap  = {};
-    for (const r of entRows) {
-      const date   = normalizeDate(r['Day']);
-      const brand  = (r['Brand'] || '').trim();
-      const model  = (r['Model'] || '').trim();
-      const buType = (r['BU Type'] || '').trim();
-      const month  = (r['Month'] || '').trim();
-      if (!date || !brand || !model) continue;
-      const k = `${date}|${brand}|${model}|${buType}`;
-      if (!entMap[k]) entMap[k] = {date,brand,model,buType,month,spends:0,leads:0};
-      entMap[k].spends += pn(r['Cost']);
-      entMap[k].leads  += pn(r['Leads']);
+    // Enterprise
+    const entMap={};
+    for(const r of parseCSV(eT)){
+      const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim(), bu=(r['BU Type']||'').trim(), month=(r['Month']||'').trim();
+      if(!date||!brand||!model) continue;
+      const k=`${date}|${brand}|${model}|${bu}`;
+      if(!entMap[k]) entMap[k]={date,brand,model,bu,month,spends:0,leads:0};
+      entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
-
-    // ── Parse Raw_triggers ──
-    const trigRows = parseCSV(trigText);
-    const trigMap  = {};
-    for (const r of trigRows) {
-      const date       = normalizeDate(r['Date']);
-      const finalBrand = (r['Final_Brand'] || '').trim();
-      const finalModel = (r['Final_Model'] || '').trim();
-      let   src        = (r['final_source'] || '').trim();
-      if (src === 'MS_FB') src = 'MS-FB';
-      if (!date || !finalBrand || !finalModel) continue;
-      const k = `${date}|${finalBrand}|${finalModel}|${src}`;
-      if (!trigMap[k]) trigMap[k] = 0;
-      const JLR_CITROEN = ['jlr','citroen','citroën'];
-      const isJlrCitroen = JLR_CITROEN.some(b => finalBrand.toLowerCase().includes(b));
-      trigMap[k] += pn(r['Triggered']) + (isJlrCitroen ? pn(r['Triggered in List_ID']) : 0);
+    // Triggers
+    const trigMap={};
+    for(const r of parseCSV(tT)){
+      const date=normalizeDate(r['Date']), fb=(r['Final_Brand']||'').trim(), fm=(r['Final_Model']||'').trim();
+      let src=(r['final_source']||'').trim(); if(src==='MS_FB') src='MS-FB';
+      if(!date||!fb||!fm) continue;
+      const k=`${date}|${fb}|${fm}|${src}`;
+      if(!trigMap[k]) trigMap[k]=0;
+      const jlr=['jlr','citroen','citroën'].some(b=>fb.toLowerCase().includes(b));
+      trigMap[k]+=pn(r['Triggered'])+(jlr?pn(r['Triggered in List_ID']):0);
     }
-
-    // ── Build unified rows ──
-    const comboSet  = new Set();
-    const comboMeta = {};
-    for (const v of Object.values(entMap)) {
-      const ck = `${v.date}|${v.brand}|${v.model}`;
+    // Build rows
+    const comboSet=new Set(), comboMeta={};
+    for(const v of Object.values(entMap)){
+      const ck=`${v.date}|${v.brand}|${v.model}`;
       comboSet.add(ck);
-      if (!comboMeta[ck]) comboMeta[ck] = {date:v.date, brand:v.brand, model:v.model, month:v.month};
+      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month};
     }
-
-    _rows = [];
-    for (const ck of [...comboSet].sort()) {
-      const {date, brand, model, month} = comboMeta[ck];
-      const awEnt  = entMap[`${date}|${brand}|${model}|Adwords`] || {spends:0,leads:0};
-      const fbEnt  = entMap[`${date}|${brand}|${model}|MS-FB`]   || {spends:0,leads:0};
-      const awTrig = trigMap[`${date}|${brand}|${model}|Adwords`] || 0;
-      const fbTrig = trigMap[`${date}|${brand}|${model}|MS-FB`]   || 0;
-      _rows.push({
-        date, brand, model, month,
-        awSpend:awEnt.spends, awLeads:awEnt.leads, awTrig,
-        fbSpend:fbEnt.spends, fbLeads:fbEnt.leads, fbTrig,
-        combSpend: awEnt.spends + fbEnt.spends,
-        combLeads: awEnt.leads  + fbEnt.leads,
-        combTrig:  awTrig + fbTrig,
-      });
+    _rows=[];
+    for(const ck of [...comboSet].sort()){
+      const {date,brand,model,month}=comboMeta[ck];
+      const aw=entMap[`${date}|${brand}|${model}|Adwords`]||{spends:0,leads:0};
+      const fb=entMap[`${date}|${brand}|${model}|MS-FB`]||{spends:0,leads:0};
+      const at=trigMap[`${date}|${brand}|${model}|Adwords`]||0;
+      const ft=trigMap[`${date}|${brand}|${model}|MS-FB`]||0;
+      _rows.push({date,brand,model,month,awSpend:aw.spends,awLeads:aw.leads,awTrig:at,fbSpend:fb.spends,fbLeads:fb.leads,fbTrig:ft,combSpend:aw.spends+fb.spends,combLeads:aw.leads+fb.leads,combTrig:at+ft});
     }
-
-    populateFilters();
-    applyFilters();
-    renderDemand();
-
-    const ts = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-    document.getElementById('statusChip').textContent = `${_rows.length} rows · ${ts}`;
-  } catch(e) {
-    document.getElementById('statusChip').textContent = 'Error';
-    const msg = `<div class="empty">Failed to load data. Are you logged into Google?<br><small>${e.message}</small></div>`;
-    document.getElementById('tableContainer').innerHTML = msg;
-    document.getElementById('demandContainer').innerHTML = msg;
+    populateFilters(); applyFilters(); renderDemand();
+    const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('statusChip').textContent=`${_rows.length} rows · ${ts}`;
+  }catch(e){
+    document.getElementById('statusChip').textContent='Error';
+    const msg=`<div class="empty">Failed to load data.<br><small>${e.message}</small></div>`;
+    document.getElementById('tableContainer').innerHTML=msg;
+    document.getElementById('demandContainer').innerHTML=msg;
     console.error(e);
   }
 }
 
-// ── TAB SWITCH ──
-function switchTab(tab) {
-  _currentTab = tab;
-  document.getElementById('dailySection').style.display  = tab === 'daily'  ? 'block' : 'none';
-  document.getElementById('demandSection').style.display = tab === 'demand' ? 'block' : 'none';
-  document.getElementById('tab-daily').classList.toggle('active',  tab === 'daily');
-  document.getElementById('tab-demand').classList.toggle('active', tab === 'demand');
+function switchTab(tab){
+  document.getElementById('dailySection').style.display =tab==='daily' ?'block':'none';
+  document.getElementById('demandSection').style.display=tab==='demand'?'block':'none';
+  document.getElementById('tab-daily').classList.toggle('active',tab==='daily');
+  document.getElementById('tab-demand').classList.toggle('active',tab==='demand');
 }
 
-// ── DAILY FILTERS ──
-function populateFilters() {
-  const months = [...new Set(_rows.map(r => r.month))].filter(Boolean).sort();
-  const brands = [...new Set(_rows.map(r => r.brand))].filter(Boolean).sort();
-  const mSel = document.getElementById('f-month');
-  const cur  = mSel.value;
-  mSel.innerHTML = '<option value="">All Months</option>' + months.map(m => `<option value="${m}">${m}</option>`).join('');
-  if (cur) mSel.value = cur;
-  const bSel = document.getElementById('f-brand');
-  const bcur = bSel.value;
-  bSel.innerHTML = '<option value="">All Brands</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
-  if (bcur) bSel.value = bcur;
-  const dates = _rows.map(r => r.date).sort();
-  if (dates.length) {
-    const fd = document.getElementById('f-from');
-    const td = document.getElementById('f-to');
-    if (!fd.value) fd.value = dates[0];
-    if (!td.value) td.value = dates[dates.length-1];
-    fd.min = dates[0]; fd.max = dates[dates.length-1];
-    td.min = dates[0]; td.max = dates[dates.length-1];
+function populateFilters(){
+  const months=[...new Set(_rows.map(r=>r.month))].filter(Boolean).sort();
+  const brands=[...new Set(_rows.map(r=>r.brand))].filter(Boolean).sort();
+  const mSel=document.getElementById('f-month'), cur=mSel.value;
+  mSel.innerHTML='<option value="">All Months</option>'+months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(cur) mSel.value=cur;
+  const bSel=document.getElementById('f-brand'), bcur=bSel.value;
+  bSel.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option value="${b}">${b}</option>`).join('');
+  if(bcur) bSel.value=bcur;
+  const dates=_rows.map(r=>r.date).sort();
+  if(dates.length){
+    const fd=document.getElementById('f-from'), td=document.getElementById('f-to');
+    if(!fd.value) fd.value=dates[0]; if(!td.value) td.value=dates[dates.length-1];
+    fd.min=dates[0]; fd.max=dates[dates.length-1]; td.min=dates[0]; td.max=dates[dates.length-1];
   }
 }
-
-function updateModelFilter(brand) {
-  const models = [...new Set(_rows.filter(r => !brand || r.brand === brand).map(r => r.model))].filter(Boolean).sort();
-  const mSel   = document.getElementById('f-model');
-  const cur    = mSel.value;
-  mSel.innerHTML = '<option value="">All Models</option>' + models.map(m => `<option value="${m}">${m}</option>`).join('');
-  if (models.includes(cur)) mSel.value = cur;
+function updateModelFilter(brand){
+  const models=[...new Set(_rows.filter(r=>!brand||r.brand===brand).map(r=>r.model))].filter(Boolean).sort();
+  const mSel=document.getElementById('f-model'), cur=mSel.value;
+  mSel.innerHTML='<option value="">All Models</option>'+models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(models.includes(cur)) mSel.value=cur;
 }
-
-function applyFilters() {
-  const month = document.getElementById('f-month').value;
-  const brand = document.getElementById('f-brand').value;
-  const model = document.getElementById('f-model').value;
-  const from  = document.getElementById('f-from').value;
-  const to    = document.getElementById('f-to').value;
+function applyFilters(){
+  const month=document.getElementById('f-month').value, brand=document.getElementById('f-brand').value;
+  const model=document.getElementById('f-model').value, from=document.getElementById('f-from').value, to=document.getElementById('f-to').value;
   updateModelFilter(brand);
-  _filtered = _rows.filter(r => {
-    if (month && r.month !== month) return false;
-    if (brand && r.brand !== brand) return false;
-    if (model && r.model !== model) return false;
-    if (from  && r.date < from)    return false;
-    if (to    && r.date > to)      return false;
+  _filtered=_rows.filter(r=>{
+    if(month&&r.month!==month) return false;
+    if(brand&&r.brand!==brand) return false;
+    if(model&&r.model!==model) return false;
+    if(from&&r.date<from) return false;
+    if(to&&r.date>to) return false;
     return true;
   });
-  renderKPIs();
-  renderTable();
+  renderKPIs(); renderTable();
+}
+function resetFilters(){
+  ['f-month','f-brand','f-model','f-from','f-to'].forEach(id=>document.getElementById(id).value='');
+  populateFilters(); applyFilters();
+}
+function renderKPIs(){
+  const tS=_filtered.reduce((s,r)=>s+r.combSpend,0), tL=_filtered.reduce((s,r)=>s+r.combLeads,0), tT=_filtered.reduce((s,r)=>s+r.combTrig,0);
+  document.getElementById('k-spends').textContent=fmtNum(tS);
+  document.getElementById('k-leads').textContent=fmtL(tL);
+  document.getElementById('k-tleads').textContent=fmtL(tT);
+  document.getElementById('k-cpl').textContent=fmtC(tS,tL);
+  document.getElementById('k-tcpl').textContent=fmtC(tS,tT);
+}
+function renderTable(){
+  document.getElementById('rowCount').textContent=`${_filtered.length} rows`;
+  if(!_filtered.length){ document.getElementById('tableContainer').innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
+  const sorted=[..._filtered].sort((a,b)=>b.date.localeCompare(a.date));
+  let h='<table><thead><tr class="group-row">';
+  h+='<th class="th-fixed" colspan="3" style="text-align:left;font-size:11px;font-weight:600;color:var(--text2)">Daily Performance</th>';
+  h+='<th class="th-aw" colspan="5">📊 Adwords</th><th class="th-fb" colspan="5">📱 MS-FB</th><th class="th-comb" colspan="5">🔗 Combined</th></tr>';
+  h+='<tr class="col-row"><th class="th-fixed left">Date</th><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
+  h+='<th class="aw aw-first">Spends</th><th class="aw">Leads</th><th class="aw">TLeads</th><th class="aw">CPL</th><th class="aw aw-last">TCPL</th>';
+  h+='<th class="fb fb-first">Spends</th><th class="fb">Leads</th><th class="fb">TLeads</th><th class="fb">CPL</th><th class="fb fb-last">TCPL</th>';
+  h+='<th class="comb comb-first">Spends</th><th class="comb">Leads</th><th class="comb">TLeads</th><th class="comb">CPL</th><th class="comb comb-last">TCPL</th>';
+  h+='</tr></thead><tbody>';
+  let t={awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,cS:0,cL:0,cT:0};
+  for(const r of sorted){
+    t.awS+=r.awSpend;t.awL+=r.awLeads;t.awT+=r.awTrig;t.fbS+=r.fbSpend;t.fbL+=r.fbLeads;t.fbT+=r.fbTrig;t.cS+=r.combSpend;t.cL+=r.combLeads;t.cT+=r.combTrig;
+    h+=`<tr><td style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td><td style="font-weight:600">${r.brand}</td><td>${r.model}</td>`;
+    h+=`<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtL(r.awLeads)}</td><td class="td-num aw">${fmtL(r.awTrig)}</td><td class="td-num aw">${fmtC(r.awSpend,r.awLeads)}</td><td class="td-num aw">${fmtC(r.awSpend,r.awTrig)}</td>`;
+    h+=`<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtL(r.fbLeads)}</td><td class="td-num fb">${fmtL(r.fbTrig)}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbTrig)}</td>`;
+    h+=`<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtL(r.combLeads)}</td><td class="td-num comb">${fmtL(r.combTrig)}</td><td class="td-num comb">${fmtC(r.combSpend,r.combLeads)}</td><td class="td-num comb">${fmtC(r.combSpend,r.combTrig)}</td></tr>`;
+  }
+  h+='</tbody><tfoot><tr><td class="left" colspan="3">TOTAL</td>';
+  h+=`<td class="aw">${fmtNum(t.awS)}</td><td class="aw">${fmtL(t.awL)}</td><td class="aw">${fmtL(t.awT)}</td><td class="aw">${fmtC(t.awS,t.awL)}</td><td class="aw">${fmtC(t.awS,t.awT)}</td>`;
+  h+=`<td class="fb">${fmtNum(t.fbS)}</td><td class="fb">${fmtL(t.fbL)}</td><td class="fb">${fmtL(t.fbT)}</td><td class="fb">${fmtC(t.fbS,t.fbL)}</td><td class="fb">${fmtC(t.fbS,t.fbT)}</td>`;
+  h+=`<td class="comb">${fmtNum(t.cS)}</td><td class="comb">${fmtL(t.cL)}</td><td class="comb">${fmtL(t.cT)}</td><td class="comb">${fmtC(t.cS,t.cL)}</td><td class="comb">${fmtC(t.cS,t.cT)}</td>`;
+  h+='</tr></tfoot></table>';
+  document.getElementById('tableContainer').innerHTML=h;
 }
 
-function resetFilters() {
-  ['f-month','f-brand','f-model','f-from','f-to'].forEach(id => document.getElementById(id).value = '');
-  populateFilters();
-  applyFilters();
-}
+function renderDemand(){
+  if(!_rows.length) return;
+  const dBrandSel=document.getElementById('d-brand'), curB=dBrandSel.value;
+  const allBrands=[...new Set(_rows.map(r=>r.brand))].filter(Boolean).sort();
+  dBrandSel.innerHTML='<option value="">All Brands</option>'+allBrands.map(b=>`<option value="${b}"${b===curB?' selected':''}>${b}</option>`).join('');
+  const brandFilter=dBrandSel.value;
+  const statusFilter=document.getElementById('d-status').value;
 
-// ── KPIs ──
-function renderKPIs() {
-  const totSpend = _filtered.reduce((s,r) => s+r.combSpend,0);
-  const totLeads = _filtered.reduce((s,r) => s+r.combLeads,0);
-  const totTrig  = _filtered.reduce((s,r) => s+r.combTrig,0);
-  document.getElementById('k-spends').textContent = fmtNum(totSpend);
-  document.getElementById('k-leads').textContent  = fmtLeads(totLeads);
-  document.getElementById('k-tleads').textContent = fmtLeads(totTrig);
-  document.getElementById('k-cpl').textContent    = fmtCPL(totSpend, totLeads);
-  document.getElementById('k-tcpl').textContent   = fmtCPL(totSpend, totTrig);
-}
-
-// ── DAILY TABLE ──
-function renderTable() {
-  document.getElementById('rowCount').textContent = `${_filtered.length} rows`;
-  if (!_filtered.length) {
-    document.getElementById('tableContainer').innerHTML = '<div class="empty">No data for selected filters.</div>';
-    return;
+  const stats={};
+  for(const r of _rows){
+    if(brandFilter&&r.brand!==brandFilter) continue;
+    if(!stats[r.model]) stats[r.model]={brand:r.brand,model:r.model,totalTrig:0,dates:new Set()};
+    stats[r.model].totalTrig+=r.combTrig; stats[r.model].dates.add(r.date);
   }
-  let html = '<table>';
-  html += '<thead>';
-  html += '<tr class="group-row">';
-  html += '<th class="th-fixed" colspan="3" style="text-align:left;font-size:11px;font-weight:600;color:var(--text2)">Daily Performance</th>';
-  html += '<th class="th-aw" colspan="5">📊 Adwords</th>';
-  html += '<th class="th-fb" colspan="5">📱 MS-FB</th>';
-  html += '<th class="th-comb" colspan="5">🔗 Combined</th>';
-  html += '</tr>';
-  html += '<tr class="col-row">';
-  html += '<th class="th-fixed left">Date</th><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
-  html += '<th class="aw aw-first">Spends</th><th class="aw">Leads</th><th class="aw">TLeads</th><th class="aw">CPL</th><th class="aw aw-last">TCPL</th>';
-  html += '<th class="fb fb-first">Spends</th><th class="fb">Leads</th><th class="fb">TLeads</th><th class="fb">CPL</th><th class="fb fb-last">TCPL</th>';
-  html += '<th class="comb comb-first">Spends</th><th class="comb">Leads</th><th class="comb">TLeads</th><th class="comb">CPL</th><th class="comb comb-last">TCPL</th>';
-  html += '</tr></thead><tbody>';
-  const sortedRows = [..._filtered].sort((a,b) => b.date.localeCompare(a.date));
-  let tots = {awSpend:0,awLeads:0,awTrig:0,fbSpend:0,fbLeads:0,fbTrig:0,combSpend:0,combLeads:0,combTrig:0};
-  for (const r of sortedRows) {
-    tots.awSpend+=r.awSpend; tots.awLeads+=r.awLeads; tots.awTrig+=r.awTrig;
-    tots.fbSpend+=r.fbSpend; tots.fbLeads+=r.fbLeads; tots.fbTrig+=r.fbTrig;
-    tots.combSpend+=r.combSpend; tots.combLeads+=r.combLeads; tots.combTrig+=r.combTrig;
-    html += '<tr>';
-    html += `<td style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td>`;
-    html += `<td style="font-weight:600">${r.brand}</td>`;
-    html += `<td>${r.model}</td>`;
-    html += `<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtLeads(r.awLeads)}</td><td class="td-num aw">${fmtLeads(r.awTrig)}</td><td class="td-num aw">${fmtCPL(r.awSpend,r.awLeads)}</td><td class="td-num aw">${fmtCPL(r.awSpend,r.awTrig)}</td>`;
-    html += `<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtLeads(r.fbLeads)}</td><td class="td-num fb">${fmtLeads(r.fbTrig)}</td><td class="td-num fb">${fmtCPL(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${fmtCPL(r.fbSpend,r.fbTrig)}</td>`;
-    html += `<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtLeads(r.combLeads)}</td><td class="td-num comb">${fmtLeads(r.combTrig)}</td><td class="td-num comb">${fmtCPL(r.combSpend,r.combLeads)}</td><td class="td-num comb">${fmtCPL(r.combSpend,r.combTrig)}</td>`;
-    html += '</tr>';
+  const rows=[], matched=new Set();
+  for(const [model,s] of Object.entries(stats)){
+    const nm=normModel(model), dObj=_demandMap[nm];
+    const days=s.dates.size, avg=days>0?s.totalTrig/days:0;
+    const demand=dObj?dObj.demand:null;
+    const pct=(demand&&demand>0)?(avg/demand)*100:null;
+    if(dObj) matched.add(nm);
+    rows.push({brand:s.brand,model,days,totalTrig:s.totalTrig,avg,demand,pct});
   }
-  html += '</tbody><tfoot><tr>';
-  html += '<td class="left" colspan="3">TOTAL</td>';
-  html += `<td class="aw">${fmtNum(tots.awSpend)}</td><td class="aw">${fmtLeads(tots.awLeads)}</td><td class="aw">${fmtLeads(tots.awTrig)}</td><td class="aw">${fmtCPL(tots.awSpend,tots.awLeads)}</td><td class="aw">${fmtCPL(tots.awSpend,tots.awTrig)}</td>`;
-  html += `<td class="fb">${fmtNum(tots.fbSpend)}</td><td class="fb">${fmtLeads(tots.fbLeads)}</td><td class="fb">${fmtLeads(tots.fbTrig)}</td><td class="fb">${fmtCPL(tots.fbSpend,tots.fbLeads)}</td><td class="fb">${fmtCPL(tots.fbSpend,tots.fbTrig)}</td>`;
-  html += `<td class="comb">${fmtNum(tots.combSpend)}</td><td class="comb">${fmtLeads(tots.combLeads)}</td><td class="comb">${fmtLeads(tots.combTrig)}</td><td class="comb">${fmtCPL(tots.combSpend,tots.combLeads)}</td><td class="comb">${fmtCPL(tots.combSpend,tots.combTrig)}</td>`;
-  html += '</tr></tfoot></table>';
-  document.getElementById('tableContainer').innerHTML = html;
-}
-
-// ── DEMAND VS DELIVERY ──
-function renderDemand() {
-  if (!_rows.length) return;
-
-  // Populate brand filter
-  const dBrandSel = document.getElementById('d-brand');
-  const curBrand  = dBrandSel.value;
-  const allBrands = [...new Set(_rows.map(r => r.brand))].filter(Boolean).sort();
-  dBrandSel.innerHTML = '<option value="">All Brands</option>' + allBrands.map(b => `<option value="${b}"${b===curBrand?' selected':''}>${b}</option>`).join('');
-  const brandFilter  = dBrandSel.value;
-  const statusFilter = document.getElementById('d-status').value;
-
-  // Per model: total combTrig and active days (unique dates with any campaign)
-  const modelStats = {};
-  for (const r of _rows) {
-    if (brandFilter && r.brand !== brandFilter) continue;
-    const key = r.model;
-    if (!modelStats[key]) modelStats[key] = { brand: r.brand, model: r.model, totalTrig: 0, dates: new Set() };
-    modelStats[key].totalTrig += r.combTrig;
-    modelStats[key].dates.add(r.date);
-  }
-
-  // Build display rows: match enterprise models to demand map
-  const demandRows = [];
-  const matchedNorm = new Set();
-
-  for (const [model, stats] of Object.entries(modelStats)) {
-    const nm   = normModel(model);
-    const dObj = _demandMap[nm];
-    const activeDays   = stats.dates.size;
-    const avgDailyTrig = activeDays > 0 ? stats.totalTrig / activeDays : 0;
-    const dailyDemand  = dObj ? dObj.demand : null;
-    const pct          = (dailyDemand && dailyDemand > 0) ? (avgDailyTrig / dailyDemand) * 100 : null;
-    if (dObj) matchedNorm.add(nm);
-    demandRows.push({ brand: stats.brand, model, activeDays, totalTrig: stats.totalTrig, avgDailyTrig, dailyDemand, pct });
-  }
-
-  // Only add unmapped demand rows when no brand filter is active (they have no brand info)
-  if (!brandFilter) {
-    for (const [nm, dObj] of Object.entries(_demandMap)) {
-      if (!matchedNorm.has(nm)) {
-        demandRows.push({ brand: '—', model: dObj.raw, activeDays: 0, totalTrig: 0, avgDailyTrig: 0, dailyDemand: dObj.demand, pct: 0 });
-      }
+  if(!brandFilter){
+    for(const [nm,dObj] of Object.entries(_demandMap)){
+      if(!matched.has(nm)) rows.push({brand:'—',model:dObj.raw,days:0,totalTrig:0,avg:0,demand:dObj.demand,pct:0});
     }
   }
-
-  // Sort: On Track → Partial → Under → No Triggers → No Demand Set / Not in Demand
-  function sortRank(r) {
-    const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
-    if (!hasDemand) return 5;           // no demand set or not in demand sheet
-    if (r.pct >= 70)  return 1;         // on track
-    if (r.pct >= 50)  return 2;         // partial
-    if (r.pct > 0)    return 3;         // under
-    return 4;                           // no triggers
+  function rank(r){
+    const hd=r.demand!==null&&r.demand>0;
+    if(!hd) return 5;
+    if(r.pct>=70) return 1;
+    if(r.pct>=50) return 2;
+    if(r.pct>0)   return 3;
+    return 4;
   }
-  demandRows.sort((a, b) => {
-    const ra = sortRank(a), rb = sortRank(b);
-    if (ra !== rb) return ra - rb;
-    if (ra <= 3) return b.pct - a.pct;
-    return a.model.localeCompare(b.model);
-  });
+  rows.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return ra-rb; if(ra<=3) return b.pct-a.pct; return a.model.localeCompare(b.model); });
 
-  // Apply status filter
-  const visibleRows = statusFilter ? demandRows.filter(r => {
-    const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
-    const rank = sortRank(r);
-    if (statusFilter === 'on-track')   return hasDemand && r.pct >= 70;
-    if (statusFilter === 'partial')    return hasDemand && r.pct >= 50 && r.pct < 70;
-    if (statusFilter === 'under')      return hasDemand && r.pct > 0 && r.pct < 50;
-    if (statusFilter === 'no-triggers')return hasDemand && r.pct === 0;
-    if (statusFilter === 'no-demand')  return !hasDemand;
+  const visible=statusFilter?rows.filter(r=>{
+    const hd=r.demand!==null&&r.demand>0;
+    if(statusFilter==='on-track')    return hd&&r.pct>=70;
+    if(statusFilter==='partial')     return hd&&r.pct>=50&&r.pct<70;
+    if(statusFilter==='under')       return hd&&r.pct>0&&r.pct<50;
+    if(statusFilter==='no-triggers') return hd&&r.pct===0;
+    if(statusFilter==='no-demand')   return !hd;
     return true;
-  }) : demandRows;
+  }):rows;
 
-  document.getElementById('demandMeta').textContent = `${visibleRows.length} models shown · ${demandRows.filter(r => r.dailyDemand !== null).length} mapped · ${demandRows.filter(r => r.dailyDemand === null).length} unmapped`;
+  document.getElementById('demandMeta').textContent=`${visible.length} models shown · ${rows.filter(r=>r.demand!==null).length} mapped`;
+  if(!visible.length){ document.getElementById('demandContainer').innerHTML='<div class="empty">No models match the selected filters.</div>'; return; }
 
-  if (!visibleRows.length) {
-    document.getElementById('demandContainer').innerHTML = '<div class="empty">No models match the selected filters.</div>';
-    return;
-  }
-
-  let html = '<table class="demand-table"><thead><tr>';
-  html += '<th class="left">Model</th><th class="left">Brand</th>';
-  html += '<th>Daily Demand</th><th>Active Days</th><th>Total Triggers</th><th>Avg Daily Triggers</th>';
-  html += '<th style="min-width:160px">Delivery vs Demand</th><th>Status</th>';
-  html += '</tr></thead><tbody>';
-
-  for (const r of visibleRows) {
-    const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
-    const pct = r.pct;
-
-    // Progress bar color
-    let barColor = '#e2e5ea', badgeHtml = '';
-    if (hasDemand && pct !== null) {
-      if      (pct >= 70)  { barColor = '#16a34a'; badgeHtml = `<span class="badge badge-green">On Track</span>`; }
-      else if (pct >= 50)  { barColor = '#ca8a04'; badgeHtml = `<span class="badge badge-yellow">Partial</span>`; }
-      else if (pct > 0)    { barColor = '#dc2626'; badgeHtml = `<span class="badge badge-red">Under</span>`; }
-      else                 { barColor = '#94a3b8'; badgeHtml = `<span class="badge badge-grey">No Triggers</span>`; }
-    } else if (!hasDemand && r.dailyDemand !== null) {
-      badgeHtml = `<span class="badge badge-grey">No Demand Set</span>`;
-    } else if (r.dailyDemand === null) {
-      badgeHtml = `<span class="badge badge-grey">Not in Demand</span>`;
+  let h='<table class="demand-table"><thead><tr>';
+  h+='<th style="text-align:left">Model</th><th style="text-align:left">Brand</th>';
+  h+='<th>Daily Demand</th><th>Active Days</th><th>Total Triggers</th><th>Avg Daily Triggers</th>';
+  h+='<th style="min-width:160px">Delivery vs Demand</th><th>Status</th>';
+  h+='</tr></thead><tbody>';
+  for(const r of visible){
+    const hd=r.demand!==null&&r.demand>0;
+    let bc='#e2e5ea', badge='';
+    if(hd&&r.pct!==null){
+      if(r.pct>=70)       {bc='#16a34a';badge='<span class="badge badge-green">On Track</span>';}
+      else if(r.pct>=50)  {bc='#ca8a04';badge='<span class="badge badge-yellow">Partial</span>';}
+      else if(r.pct>0)    {bc='#dc2626';badge='<span class="badge badge-red">Under</span>';}
+      else                {bc='#94a3b8';badge='<span class="badge badge-grey">No Triggers</span>';}
+    } else if(!hd&&r.demand!==null){
+      badge='<span class="badge badge-grey">No Demand Set</span>';
+    } else {
+      badge='<span class="badge badge-grey">Not in Demand</span>';
     }
-
-    const barWidth = hasDemand && pct !== null ? Math.min(100, pct).toFixed(1) : 0;
-    const pctLabel = hasDemand && pct !== null ? `${pct.toFixed(1)}%` : '—';
-
-    html += '<tr>';
-    html += `<td style="font-weight:600">${r.model}</td>`;
-    html += `<td style="color:var(--text2)">${r.brand}</td>`;
-    html += `<td class="td-right">${r.dailyDemand !== null ? Math.round(r.dailyDemand).toLocaleString('en-IN') : '<span class="unmapped">not set</span>'}</td>`;
-    html += `<td class="td-right">${r.activeDays > 0 ? r.activeDays : '—'}</td>`;
-    html += `<td class="td-right">${r.totalTrig > 0 ? Math.round(r.totalTrig).toLocaleString('en-IN') : '—'}</td>`;
-    html += `<td class="td-right">${r.avgDailyTrig > 0 ? r.avgDailyTrig.toFixed(1) : '—'}</td>`;
-    html += `<td><div class="progress-bar-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${barWidth}%;background:${barColor}"></div></div><span class="pct-label" style="color:${barColor}">${pctLabel}</span></div></td>`;
-    html += `<td>${badgeHtml}</td>`;
-    html += '</tr>';
+    const bw=hd&&r.pct!==null?Math.min(100,r.pct).toFixed(1):0;
+    const pl=hd&&r.pct!==null?`${r.pct.toFixed(1)}%`:'—';
+    h+=`<tr><td style="font-weight:600">${r.model}</td><td style="color:var(--text2)">${r.brand}</td>`;
+    h+=`<td class="td-right">${r.demand!==null?Math.round(r.demand).toLocaleString('en-IN'):'<span class="unmapped">not set</span>'}</td>`;
+    h+=`<td class="td-right">${r.days>0?r.days:'—'}</td>`;
+    h+=`<td class="td-right">${r.totalTrig>0?Math.round(r.totalTrig).toLocaleString('en-IN'):'—'}</td>`;
+    h+=`<td class="td-right">${r.avg>0?r.avg.toFixed(1):'—'}</td>`;
+    h+=`<td><div class="progress-bar-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${bw}%;background:${bc}"></div></div><span class="pct-label" style="color:${bc}">${pl}</span></div></td>`;
+    h+=`<td>${badge}</td></tr>`;
   }
-
-  html += '</tbody></table>';
-  document.getElementById('demandContainer').innerHTML = html;
+  h+='</tbody></table>';
+  document.getElementById('demandContainer').innerHTML=h;
 }
-
-loadData();
 </script>
 </body>
 </html>
