@@ -565,11 +565,20 @@ function renderDemand() {
     }
   }
 
-  // Sort: matched first (by pct asc = worst delivery first), unmapped last
+  // Sort: On Track → Partial → Under → No Triggers → No Demand Set / Not in Demand
+  function sortRank(r) {
+    const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
+    if (!hasDemand) return 5;           // no demand set or not in demand sheet
+    if (r.pct >= 80)  return 1;         // on track
+    if (r.pct >= 50)  return 2;         // partial
+    if (r.pct > 0)    return 3;         // under
+    return 4;                           // no triggers
+  }
   demandRows.sort((a, b) => {
-    if (a.dailyDemand === null && b.dailyDemand !== null) return 1;
-    if (a.dailyDemand !== null && b.dailyDemand === null) return -1;
-    if (a.pct !== null && b.pct !== null) return a.pct - b.pct;
+    const ra = sortRank(a), rb = sortRank(b);
+    if (ra !== rb) return ra - rb;
+    // within same rank: on track/partial/under → sort by pct desc (best first); no demand → alphabetical
+    if (ra <= 3) return b.pct - a.pct;
     return a.model.localeCompare(b.model);
   });
 
