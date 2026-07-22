@@ -16,7 +16,6 @@
   --text2:#5a6475;
   --text3:#8c95a3;
   --accent:#4f6ef7;
-  --accent-dim:#eef0fe;
   --aw:#2563eb;
   --aw-bg:#eff6ff;
   --aw-border:#bfdbfe;
@@ -31,17 +30,22 @@
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}
 
-/* ── NAV ── */
+/* NAV */
 .nav{background:#1e2433;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.nav-left{display:flex;align-items:center;gap:16px}
 .nav-title{font-size:15px;font-weight:600;letter-spacing:.3px}
-.nav-badge{font-size:10px;background:#4f6ef7;padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:500}
+.nav-badge{font-size:10px;background:#4f6ef7;padding:2px 8px;border-radius:20px;font-weight:500}
+.nav-tabs{display:flex;gap:2px}
+.nav-tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:#94a3b8;border:none;background:transparent;transition:all .15s}
+.nav-tab:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-tab.active{background:#4f6ef7;color:#fff}
 .nav-right{display:flex;align-items:center;gap:12px}
 .refresh-btn{display:flex;align-items:center;gap:6px;background:#4f6ef7;color:#fff;border:none;padding:7px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s}
 .refresh-btn:hover{background:#3d5ce3}
 .refresh-btn svg{width:14px;height:14px}
 .status-chip{font-size:11px;color:#94a3b8;background:rgba(255,255,255,.07);padding:4px 10px;border-radius:20px}
 
-/* ── FILTERS ── */
+/* FILTERS */
 .filters{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
 .filter-group{display:flex;flex-direction:column;gap:4px}
 .filter-group label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)}
@@ -53,14 +57,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .reset-btn:hover{border-color:var(--accent);color:var(--accent)}
 .filter-spacer{flex:1}
 
-/* ── KPI CARDS ── */
+/* KPI CARDS */
 .kpi-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:16px 20px}
 .kpi-card{background:var(--surface);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--border)}
 .kpi-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px}
 .kpi-value{font-size:20px;font-weight:700;color:var(--text);line-height:1}
 .kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
 
-/* ── TABLE WRAPPER ── */
+/* TABLE */
 .table-wrap{padding:0 20px 20px;overflow-x:auto}
 .table-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
 .table-header-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
@@ -71,7 +75,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}
 thead{position:sticky;top:52px;z-index:10}
 thead tr.group-row th{padding:8px 10px;font-weight:700;font-size:11px;text-align:center;border-bottom:1px solid var(--border)}
 thead tr.col-row th{padding:7px 10px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);text-align:right;border-bottom:2px solid var(--border);white-space:nowrap}
-thead tr.col-row th:first-child,thead tr.col-row th:nth-child(2),thead tr.col-row th:nth-child(3){text-align:left}
+thead tr.col-row th.left{text-align:left}
 thead tr.group-row th.th-fixed{background:var(--surface);border-right:1px solid var(--border)}
 thead tr.col-row th.th-fixed{background:var(--surface);border-right:1px solid var(--border)}
 thead tr.group-row th.th-aw{background:var(--aw-bg);color:var(--aw);border-left:2px solid var(--aw-border);border-right:2px solid var(--aw-border)}
@@ -86,54 +90,71 @@ thead tr.col-row th.fb-last{border-right:2px solid var(--fb-border)}
 thead tr.col-row th.comb{background:var(--comb-bg);border-left:1px solid var(--comb-border);border-right:1px solid var(--comb-border)}
 thead tr.col-row th.comb-first{border-left:2px solid var(--comb-border)}
 thead tr.col-row th.comb-last{border-right:2px solid var(--comb-border)}
-
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:hover{background:#f5f7ff}
 tbody td{padding:8px 10px;vertical-align:middle}
-tbody td.td-date{font-weight:600;color:var(--text);white-space:nowrap;min-width:90px}
-tbody td.td-brand{font-weight:600;min-width:80px}
-tbody td.td-model{color:var(--text);min-width:140px}
 tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 tbody td.aw{background:rgba(239,246,255,.4)}
 tbody td.fb{background:rgba(255,247,237,.4)}
 tbody td.comb{background:rgba(240,253,244,.4)}
-tbody td.td-cpl,tbody td.td-tcpl{color:var(--text2)}
 tbody tr:hover td.aw{background:rgba(239,246,255,.8)}
 tbody tr:hover td.fb{background:rgba(255,247,237,.8)}
 tbody tr:hover td.comb{background:rgba(240,253,244,.8)}
-tbody td.td-fixed{background:var(--surface);position:sticky;border-right:1px solid var(--border)}
-tbody tr:hover td.td-fixed{background:#f5f7ff}
-
 tfoot tr{background:var(--surface2);border-top:2px solid var(--border)}
 tfoot td{padding:9px 10px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
-tfoot td:first-child,tfoot td:nth-child(2),tfoot td:nth-child(3){text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text2)}
+tfoot td.left{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text2)}
 tfoot td.aw{background:rgba(239,246,255,.5)}
 tfoot td.fb{background:rgba(255,247,237,.5)}
 tfoot td.comb{background:rgba(240,253,244,.5)}
 
-/* ── LOADING / EMPTY ── */
+/* DEMAND TAB */
+#demandSection{padding:16px 20px 20px}
+.demand-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.demand-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.demand-title{font-size:13px;font-weight:600}
+.demand-meta{font-size:11px;color:var(--text3)}
+.demand-table{width:100%;border-collapse:collapse;font-size:12px}
+.demand-table thead th{padding:9px 14px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);text-align:right;border-bottom:2px solid var(--border);background:var(--surface2);white-space:nowrap;position:sticky;top:52px}
+.demand-table thead th:first-child,.demand-table thead th:nth-child(2){text-align:left}
+.demand-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+.demand-table tbody tr:hover{background:#f5f7ff}
+.demand-table tbody td{padding:9px 14px;vertical-align:middle}
+.demand-table tbody td.td-right{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-yellow{background:#fef9c3;color:#a16207}
+.badge-red{background:#fee2e2;color:#dc2626}
+.badge-grey{background:#f1f5f9;color:#64748b}
+.progress-bar-wrap{display:flex;align-items:center;gap:8px}
+.progress-bar-bg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;min-width:60px}
+.progress-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.pct-label{font-size:11px;font-weight:600;min-width:38px;text-align:right}
+.unmapped{color:var(--text3);font-style:italic;font-size:11px}
+
+/* LOADING / EMPTY */
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;color:var(--text3);gap:12px}
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:40px;color:var(--text3)}
 
-/* ── HIGHLIGHT NEGATIVE MARGIN ── */
-.neg{color:#dc2626}
-.pos{color:#16a34a}
-
-@media(max-width:768px){
-  .kpi-bar{grid-template-columns:repeat(2,1fr)}
-  .filters{gap:8px}
-}
+/* TAB SECTIONS */
+#dailySection{display:block}
+#demandSection{display:none}
 </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav class="nav">
-  <div style="display:flex;align-items:center">
-    <span class="nav-title">Enterprise Daily Tracker</span>
-    <span class="nav-badge">FY26-27</span>
+  <div class="nav-left">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="nav-title">Enterprise Daily Tracker</span>
+      <span class="nav-badge">FY26-27</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tab-daily" onclick="switchTab('daily')">Daily Performance</button>
+      <button class="nav-tab" id="tab-demand" onclick="switchTab('demand')">Demand vs Delivery</button>
+    </div>
   </div>
   <div class="nav-right">
     <span class="status-chip" id="statusChip">Loading…</span>
@@ -144,83 +165,104 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
   </div>
 </nav>
 
-<!-- FILTERS -->
-<div class="filters">
-  <div class="filter-group">
-    <label>Month</label>
-    <select id="f-month" onchange="applyFilters()"><option value="">All Months</option></select>
+<!-- ═══════════ DAILY PERFORMANCE SECTION ═══════════ -->
+<div id="dailySection">
+  <!-- FILTERS -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>Month</label>
+      <select id="f-month" onchange="applyFilters()"><option value="">All Months</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Brand</label>
+      <select id="f-brand" onchange="applyFilters()"><option value="">All Brands</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Model</label>
+      <select id="f-model" onchange="applyFilters()"><option value="">All Models</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Date Range</label>
+      <div class="date-range">
+        <input type="date" id="f-from" onchange="applyFilters()">
+        <span>→</span>
+        <input type="date" id="f-to" onchange="applyFilters()">
+      </div>
+    </div>
+    <button class="reset-btn" onclick="resetFilters()">Reset</button>
+    <div class="filter-spacer"></div>
   </div>
-  <div class="filter-group">
-    <label>Brand</label>
-    <select id="f-brand" onchange="applyFilters()"><option value="">All Brands</option></select>
-  </div>
-  <div class="filter-group">
-    <label>Model</label>
-    <select id="f-model" onchange="applyFilters()"><option value="">All Models</option></select>
-  </div>
-  <div class="filter-group">
-    <label>Date Range</label>
-    <div class="date-range">
-      <input type="date" id="f-from" onchange="applyFilters()">
-      <span>→</span>
-      <input type="date" id="f-to" onchange="applyFilters()">
+
+  <!-- KPI CARDS -->
+  <div class="kpi-bar">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Spends</div>
+      <div class="kpi-value" id="k-spends">—</div>
+      <div class="kpi-sub">Combined</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Leads</div>
+      <div class="kpi-value" id="k-leads">—</div>
+      <div class="kpi-sub">Combined</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Triggers</div>
+      <div class="kpi-value" id="k-tleads">—</div>
+      <div class="kpi-sub">Post Validation</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg CPL</div>
+      <div class="kpi-value" id="k-cpl">—</div>
+      <div class="kpi-sub">Combined</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg TCPL</div>
+      <div class="kpi-value" id="k-tcpl">—</div>
+      <div class="kpi-sub">Combined</div>
     </div>
   </div>
-  <button class="reset-btn" onclick="resetFilters()">Reset</button>
-  <div class="filter-spacer"></div>
-</div>
 
-<!-- KPI CARDS -->
-<div class="kpi-bar">
-  <div class="kpi-card">
-    <div class="kpi-label">Total Spends</div>
-    <div class="kpi-value" id="k-spends">—</div>
-    <div class="kpi-sub">Combined</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Total Leads</div>
-    <div class="kpi-value" id="k-leads">—</div>
-    <div class="kpi-sub">Combined</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Total Triggers</div>
-    <div class="kpi-value" id="k-tleads">—</div>
-    <div class="kpi-sub">Post Validation</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Avg CPL</div>
-    <div class="kpi-value" id="k-cpl">—</div>
-    <div class="kpi-sub">Combined</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Avg TCPL</div>
-    <div class="kpi-value" id="k-tcpl">—</div>
-    <div class="kpi-sub">Combined</div>
-  </div>
-</div>
-
-<!-- TABLE -->
-<div class="table-wrap">
-  <div class="table-card">
-    <div class="table-header-bar">
-      <span class="table-title">Daily Performance</span>
-      <span class="row-count" id="rowCount"></span>
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <div class="table-card">
+      <div class="table-header-bar">
+        <span class="table-title">Daily Performance</span>
+        <span class="row-count" id="rowCount"></span>
+      </div>
+      <div id="tableContainer">
+        <div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>
+      </div>
     </div>
-    <div id="tableContainer">
-      <div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>
+  </div>
+</div>
+
+<!-- ═══════════ DEMAND VS DELIVERY SECTION ═══════════ -->
+<div id="demandSection">
+  <div style="padding:16px 20px 20px">
+    <div class="demand-card">
+      <div class="demand-header">
+        <span class="demand-title">Demand vs Delivery — Model Level</span>
+        <span class="demand-meta" id="demandMeta"></span>
+      </div>
+      <div id="demandContainer">
+        <div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-const ENT_URL  = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=1372441356';
-const TRIG_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
+const ENT_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=1372441356';
+const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
+const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 
-let _rows = [];   // unified processed rows
-let _filtered = [];
+let _rows      = [];
+let _filtered  = [];
+let _demandMap = {};   // normalized model → daily demand
+let _currentTab = 'daily';
 
 // ── HELPERS ──
-function pn(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function pn(v) { const n = parseFloat(String(v).replace(/,/g,'')); return isNaN(n) ? 0 : n; }
 
 function parseCSV(text) {
   const lines = text.split('\n').filter(l => l.trim());
@@ -234,80 +276,84 @@ function parseCSV(text) {
   }).filter(r => Object.values(r).some(v => v));
 }
 
-// Convert "1-Jul-2026" or "2026-07-01" to "YYYY-MM-DD"
 const MONTH_MAP = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
 function normalizeDate(d) {
   if (!d) return '';
   d = d.trim().replace(/\r/g,'');
-  // Already ISO
   if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-  // "1-Jul-2026" or "01-Jul-2026"
   const m = d.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})$/);
   if (m) {
     const day = m[1].padStart(2,'0');
     const mon = MONTH_MAP[m[2].charAt(0).toUpperCase()+m[2].slice(1,3).toLowerCase()] || '01';
     return `${m[3]}-${mon}-${day}`;
   }
-  return '';  // unrecognized format — drop row
+  return '';
 }
 
 function fmtDate(d) {
-  // "2026-07-01" → "01 Jul '26"
   const [y, mo, da] = d.split('-');
   const MONS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${da} ${MONS[parseInt(mo)]} '${y.slice(2)}`;
 }
 
-function fmtNum(n, prefix='₹') {
+function fmtNum(n) {
   if (n === 0) return '—';
-  if (n >= 1e7) return prefix + (n/1e7).toFixed(2) + 'Cr';
-  if (n >= 1e5) return prefix + (n/1e5).toFixed(1) + 'L';
-  if (n >= 1e3) return prefix + (n/1e3).toFixed(1) + 'K';
-  return prefix + Math.round(n).toLocaleString('en-IN');
+  if (n >= 1e7) return '₹' + (n/1e7).toFixed(2) + 'Cr';
+  if (n >= 1e5) return '₹' + (n/1e5).toFixed(1) + 'L';
+  if (n >= 1e3) return '₹' + (n/1e3).toFixed(1) + 'K';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
 }
 
-function fmtLeads(n) {
-  if (n === 0) return '—';
-  return Math.round(n).toLocaleString('en-IN');
-}
+function fmtLeads(n) { return n === 0 ? '—' : Math.round(n).toLocaleString('en-IN'); }
+function fmtCPL(s, l) { return l === 0 ? '—' : '₹' + Math.round(s/l).toLocaleString('en-IN'); }
 
-function fmtCPL(spend, leads) {
-  if (leads === 0) return '—';
-  return '₹' + Math.round(spend/leads).toLocaleString('en-IN');
+// Normalize model name for fuzzy matching (lowercase, strip punctuation/spaces)
+function normModel(s) {
+  return (s || '').toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/\s+/g, '');
 }
 
 // ── LOAD DATA ──
 async function loadData() {
   document.getElementById('statusChip').textContent = 'Loading…';
   document.getElementById('tableContainer').innerHTML = '<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
+  document.getElementById('demandContainer').innerHTML = '<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
 
   try {
-    const [entText, trigText] = await Promise.all([
-      fetch(ENT_URL, {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
-      fetch(TRIG_URL, {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
+    const [entText, trigText, demText] = await Promise.all([
+      fetch(ENT_URL,    {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
+      fetch(TRIG_URL,   {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
+      fetch(DEMAND_URL, {headers:{'Accept-Encoding':'gzip,deflate'}}).then(r => r.text()),
     ]);
 
-    const entRows  = parseCSV(entText);
-    const trigRows = parseCSV(trigText);
+    // ── Parse Demand tab ──
+    const demandRows = parseCSV(demText);
+    _demandMap = {};
+    for (const r of demandRows) {
+      const model = (r['Models'] || '').trim();
+      if (model) _demandMap[normModel(model)] = { raw: model, demand: pn(r['Daily Demand']) };
+    }
 
-    // Build enterprise map: key = date|brand|model|butype → {spends, leads}
-    const entMap = {};
+    // ── Parse Enterprise_Raw ──
+    const entRows = parseCSV(entText);
+    const entMap  = {};
     for (const r of entRows) {
       const date   = normalizeDate(r['Day']);
       const brand  = (r['Brand'] || '').trim();
       const model  = (r['Model'] || '').trim();
-      const buType = (r['BU Type'] || '').trim(); // "Adwords" or "MS-FB"
+      const buType = (r['BU Type'] || '').trim();
       const month  = (r['Month'] || '').trim();
       if (!date || !brand || !model) continue;
       const k = `${date}|${brand}|${model}|${buType}`;
-      if (!entMap[k]) entMap[k] = {date, brand, model, buType, month, spends:0, leads:0};
+      if (!entMap[k]) entMap[k] = {date,brand,model,buType,month,spends:0,leads:0};
       entMap[k].spends += pn(r['Cost']);
       entMap[k].leads  += pn(r['Leads']);
     }
 
-    // Build trigger map: key = date|finalBrand|finalModel|source → triggered
-    // final_source: "Adwords" or "MS_FB" → normalize to "Adwords"/"MS-FB"
-    const trigMap = {};
+    // ── Parse Raw_triggers ──
+    const trigRows = parseCSV(trigText);
+    const trigMap  = {};
     for (const r of trigRows) {
       const date       = normalizeDate(r['Date']);
       const finalBrand = (r['Final_Brand'] || '').trim();
@@ -322,64 +368,68 @@ async function loadData() {
       trigMap[k] += pn(r['Triggered']) + (isJlrCitroen ? pn(r['Triggered in List_ID']) : 0);
     }
 
-    // Build unified rows: enumerate all date+brand+model combos
-    const comboSet = new Set();
+    // ── Build unified rows ──
+    const comboSet  = new Set();
     const comboMeta = {};
     for (const v of Object.values(entMap)) {
       const ck = `${v.date}|${v.brand}|${v.model}`;
       comboSet.add(ck);
-      if (!comboMeta[ck]) comboMeta[ck] = {date: v.date, brand: v.brand, model: v.model, month: v.month};
+      if (!comboMeta[ck]) comboMeta[ck] = {date:v.date, brand:v.brand, model:v.model, month:v.month};
     }
 
     _rows = [];
     for (const ck of [...comboSet].sort()) {
       const {date, brand, model, month} = comboMeta[ck];
-
       const awEnt  = entMap[`${date}|${brand}|${model}|Adwords`] || {spends:0,leads:0};
       const fbEnt  = entMap[`${date}|${brand}|${model}|MS-FB`]   || {spends:0,leads:0};
-
       const awTrig = trigMap[`${date}|${brand}|${model}|Adwords`] || 0;
       const fbTrig = trigMap[`${date}|${brand}|${model}|MS-FB`]   || 0;
-
       _rows.push({
         date, brand, model, month,
-        awSpend:  awEnt.spends,  awLeads:  awEnt.leads,  awTrig,
-        fbSpend:  fbEnt.spends,  fbLeads:  fbEnt.leads,  fbTrig,
+        awSpend:awEnt.spends, awLeads:awEnt.leads, awTrig,
+        fbSpend:fbEnt.spends, fbLeads:fbEnt.leads, fbTrig,
         combSpend: awEnt.spends + fbEnt.spends,
         combLeads: awEnt.leads  + fbEnt.leads,
-        combTrig:  awTrig       + fbTrig,
+        combTrig:  awTrig + fbTrig,
       });
     }
 
-    // Populate filters
     populateFilters();
     applyFilters();
+    renderDemand();
 
     const ts = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('statusChip').textContent = `${_rows.length} rows · ${ts}`;
   } catch(e) {
     document.getElementById('statusChip').textContent = 'Error';
-    document.getElementById('tableContainer').innerHTML = `<div class="empty">Failed to load data. Are you logged into Google? <br><small>${e.message}</small></div>`;
+    const msg = `<div class="empty">Failed to load data. Are you logged into Google?<br><small>${e.message}</small></div>`;
+    document.getElementById('tableContainer').innerHTML = msg;
+    document.getElementById('demandContainer').innerHTML = msg;
     console.error(e);
   }
 }
 
-// ── FILTERS ──
-function populateFilters() {
-  const months  = [...new Set(_rows.map(r => r.month))].filter(Boolean).sort();
-  const brands  = [...new Set(_rows.map(r => r.brand))].filter(Boolean).sort();
+// ── TAB SWITCH ──
+function switchTab(tab) {
+  _currentTab = tab;
+  document.getElementById('dailySection').style.display  = tab === 'daily'  ? 'block' : 'none';
+  document.getElementById('demandSection').style.display = tab === 'demand' ? 'block' : 'none';
+  document.getElementById('tab-daily').classList.toggle('active',  tab === 'daily');
+  document.getElementById('tab-demand').classList.toggle('active', tab === 'demand');
+}
 
+// ── DAILY FILTERS ──
+function populateFilters() {
+  const months = [...new Set(_rows.map(r => r.month))].filter(Boolean).sort();
+  const brands = [...new Set(_rows.map(r => r.brand))].filter(Boolean).sort();
   const mSel = document.getElementById('f-month');
   const cur  = mSel.value;
   mSel.innerHTML = '<option value="">All Months</option>' + months.map(m => `<option value="${m}">${m}</option>`).join('');
   if (cur) mSel.value = cur;
-
   const bSel = document.getElementById('f-brand');
   const bcur = bSel.value;
   bSel.innerHTML = '<option value="">All Brands</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
   if (bcur) bSel.value = bcur;
-
-  // Date range: min/max
   const dates = _rows.map(r => r.date).sort();
   if (dates.length) {
     const fd = document.getElementById('f-from');
@@ -405,9 +455,7 @@ function applyFilters() {
   const model = document.getElementById('f-model').value;
   const from  = document.getElementById('f-from').value;
   const to    = document.getElementById('f-to').value;
-
   updateModelFilter(brand);
-
   _filtered = _rows.filter(r => {
     if (month && r.month !== month) return false;
     if (brand && r.brand !== brand) return false;
@@ -416,26 +464,21 @@ function applyFilters() {
     if (to    && r.date > to)      return false;
     return true;
   });
-
   renderKPIs();
   renderTable();
 }
 
 function resetFilters() {
-  document.getElementById('f-month').value = '';
-  document.getElementById('f-brand').value = '';
-  document.getElementById('f-model').value = '';
-  document.getElementById('f-from').value  = '';
-  document.getElementById('f-to').value    = '';
+  ['f-month','f-brand','f-model','f-from','f-to'].forEach(id => document.getElementById(id).value = '');
   populateFilters();
   applyFilters();
 }
 
 // ── KPIs ──
 function renderKPIs() {
-  const totSpend  = _filtered.reduce((s,r) => s + r.combSpend, 0);
-  const totLeads  = _filtered.reduce((s,r) => s + r.combLeads, 0);
-  const totTrig   = _filtered.reduce((s,r) => s + r.combTrig, 0);
+  const totSpend = _filtered.reduce((s,r) => s+r.combSpend,0);
+  const totLeads = _filtered.reduce((s,r) => s+r.combLeads,0);
+  const totTrig  = _filtered.reduce((s,r) => s+r.combTrig,0);
   document.getElementById('k-spends').textContent = fmtNum(totSpend);
   document.getElementById('k-leads').textContent  = fmtLeads(totLeads);
   document.getElementById('k-tleads').textContent = fmtLeads(totTrig);
@@ -443,89 +486,137 @@ function renderKPIs() {
   document.getElementById('k-tcpl').textContent   = fmtCPL(totSpend, totTrig);
 }
 
-// ── TABLE ──
+// ── DAILY TABLE ──
 function renderTable() {
   document.getElementById('rowCount').textContent = `${_filtered.length} rows`;
-
   if (!_filtered.length) {
     document.getElementById('tableContainer').innerHTML = '<div class="empty">No data for selected filters.</div>';
     return;
   }
-
   let html = '<table>';
-
-  // Group header row
   html += '<thead>';
   html += '<tr class="group-row">';
-  html += '<th class="th-fixed" colspan="3" rowspan="1" style="text-align:left;font-size:11px;font-weight:600;color:var(--text2)">Daily Performance</th>';
+  html += '<th class="th-fixed" colspan="3" style="text-align:left;font-size:11px;font-weight:600;color:var(--text2)">Daily Performance</th>';
   html += '<th class="th-aw" colspan="5">📊 Adwords</th>';
   html += '<th class="th-fb" colspan="5">📱 MS-FB</th>';
   html += '<th class="th-comb" colspan="5">🔗 Combined</th>';
   html += '</tr>';
-
-  // Column header row
   html += '<tr class="col-row">';
-  html += '<th class="th-fixed">Date</th>';
-  html += '<th class="th-fixed">Brand</th>';
-  html += '<th class="th-fixed">Model</th>';
-  // Adwords
+  html += '<th class="th-fixed left">Date</th><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
   html += '<th class="aw aw-first">Spends</th><th class="aw">Leads</th><th class="aw">TLeads</th><th class="aw">CPL</th><th class="aw aw-last">TCPL</th>';
-  // MS-FB
   html += '<th class="fb fb-first">Spends</th><th class="fb">Leads</th><th class="fb">TLeads</th><th class="fb">CPL</th><th class="fb fb-last">TCPL</th>';
-  // Combined
   html += '<th class="comb comb-first">Spends</th><th class="comb">Leads</th><th class="comb">TLeads</th><th class="comb">CPL</th><th class="comb comb-last">TCPL</th>';
-  html += '</tr>';
-  html += '</thead>';
-
-  // Body
-  html += '<tbody>';
-  // Compute totals
+  html += '</tr></thead><tbody>';
   let tots = {awSpend:0,awLeads:0,awTrig:0,fbSpend:0,fbLeads:0,fbTrig:0,combSpend:0,combLeads:0,combTrig:0};
-
   for (const r of _filtered) {
-    tots.awSpend   += r.awSpend;   tots.awLeads  += r.awLeads;  tots.awTrig   += r.awTrig;
-    tots.fbSpend   += r.fbSpend;   tots.fbLeads  += r.fbLeads;  tots.fbTrig   += r.fbTrig;
-    tots.combSpend += r.combSpend; tots.combLeads+= r.combLeads; tots.combTrig += r.combTrig;
-
+    tots.awSpend+=r.awSpend; tots.awLeads+=r.awLeads; tots.awTrig+=r.awTrig;
+    tots.fbSpend+=r.fbSpend; tots.fbLeads+=r.fbLeads; tots.fbTrig+=r.fbTrig;
+    tots.combSpend+=r.combSpend; tots.combLeads+=r.combLeads; tots.combTrig+=r.combTrig;
     html += '<tr>';
-    html += `<td class="td-date td-fixed">${fmtDate(r.date)}</td>`;
-    html += `<td class="td-brand td-fixed">${r.brand}</td>`;
-    html += `<td class="td-model td-fixed">${r.model}</td>`;
-    // Adwords
-    html += `<td class="td-num aw">${fmtNum(r.awSpend)}</td>`;
-    html += `<td class="td-num aw">${fmtLeads(r.awLeads)}</td>`;
-    html += `<td class="td-num aw">${fmtLeads(r.awTrig)}</td>`;
-    html += `<td class="td-num aw td-cpl">${fmtCPL(r.awSpend,r.awLeads)}</td>`;
-    html += `<td class="td-num aw td-tcpl">${fmtCPL(r.awSpend,r.awTrig)}</td>`;
-    // MS-FB
-    html += `<td class="td-num fb">${fmtNum(r.fbSpend)}</td>`;
-    html += `<td class="td-num fb">${fmtLeads(r.fbLeads)}</td>`;
-    html += `<td class="td-num fb">${fmtLeads(r.fbTrig)}</td>`;
-    html += `<td class="td-num fb td-cpl">${fmtCPL(r.fbSpend,r.fbLeads)}</td>`;
-    html += `<td class="td-num fb td-tcpl">${fmtCPL(r.fbSpend,r.fbTrig)}</td>`;
-    // Combined
-    html += `<td class="td-num comb">${fmtNum(r.combSpend)}</td>`;
-    html += `<td class="td-num comb">${fmtLeads(r.combLeads)}</td>`;
-    html += `<td class="td-num comb">${fmtLeads(r.combTrig)}</td>`;
-    html += `<td class="td-num comb td-cpl">${fmtCPL(r.combSpend,r.combLeads)}</td>`;
-    html += `<td class="td-num comb td-tcpl">${fmtCPL(r.combSpend,r.combTrig)}</td>`;
+    html += `<td style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td>`;
+    html += `<td style="font-weight:600">${r.brand}</td>`;
+    html += `<td>${r.model}</td>`;
+    html += `<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtLeads(r.awLeads)}</td><td class="td-num aw">${fmtLeads(r.awTrig)}</td><td class="td-num aw">${fmtCPL(r.awSpend,r.awLeads)}</td><td class="td-num aw">${fmtCPL(r.awSpend,r.awTrig)}</td>`;
+    html += `<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtLeads(r.fbLeads)}</td><td class="td-num fb">${fmtLeads(r.fbTrig)}</td><td class="td-num fb">${fmtCPL(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${fmtCPL(r.fbSpend,r.fbTrig)}</td>`;
+    html += `<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtLeads(r.combLeads)}</td><td class="td-num comb">${fmtLeads(r.combTrig)}</td><td class="td-num comb">${fmtCPL(r.combSpend,r.combLeads)}</td><td class="td-num comb">${fmtCPL(r.combSpend,r.combTrig)}</td>`;
     html += '</tr>';
   }
-  html += '</tbody>';
-
-  // Footer totals
-  html += '<tfoot><tr>';
-  html += '<td colspan="3">TOTAL</td>';
+  html += '</tbody><tfoot><tr>';
+  html += '<td class="left" colspan="3">TOTAL</td>';
   html += `<td class="aw">${fmtNum(tots.awSpend)}</td><td class="aw">${fmtLeads(tots.awLeads)}</td><td class="aw">${fmtLeads(tots.awTrig)}</td><td class="aw">${fmtCPL(tots.awSpend,tots.awLeads)}</td><td class="aw">${fmtCPL(tots.awSpend,tots.awTrig)}</td>`;
   html += `<td class="fb">${fmtNum(tots.fbSpend)}</td><td class="fb">${fmtLeads(tots.fbLeads)}</td><td class="fb">${fmtLeads(tots.fbTrig)}</td><td class="fb">${fmtCPL(tots.fbSpend,tots.fbLeads)}</td><td class="fb">${fmtCPL(tots.fbSpend,tots.fbTrig)}</td>`;
   html += `<td class="comb">${fmtNum(tots.combSpend)}</td><td class="comb">${fmtLeads(tots.combLeads)}</td><td class="comb">${fmtLeads(tots.combTrig)}</td><td class="comb">${fmtCPL(tots.combSpend,tots.combLeads)}</td><td class="comb">${fmtCPL(tots.combSpend,tots.combTrig)}</td>`;
-  html += '</tr></tfoot>';
-
-  html += '</table>';
+  html += '</tr></tfoot></table>';
   document.getElementById('tableContainer').innerHTML = html;
 }
 
-// ── INIT ──
+// ── DEMAND VS DELIVERY ──
+function renderDemand() {
+  if (!_rows.length) return;
+
+  // Per model: total combTrig and active days (unique dates with any campaign)
+  const modelStats = {};
+  for (const r of _rows) {
+    const key = r.model;
+    if (!modelStats[key]) modelStats[key] = { brand: r.brand, model: r.model, totalTrig: 0, dates: new Set() };
+    modelStats[key].totalTrig += r.combTrig;
+    modelStats[key].dates.add(r.date);
+  }
+
+  // Build display rows: match enterprise models to demand map
+  const demandRows = [];
+  const matchedNorm = new Set();
+
+  for (const [model, stats] of Object.entries(modelStats)) {
+    const nm   = normModel(model);
+    const dObj = _demandMap[nm];
+    const activeDays   = stats.dates.size;
+    const avgDailyTrig = activeDays > 0 ? stats.totalTrig / activeDays : 0;
+    const dailyDemand  = dObj ? dObj.demand : null;
+    const pct          = (dailyDemand && dailyDemand > 0) ? (avgDailyTrig / dailyDemand) * 100 : null;
+    if (dObj) matchedNorm.add(nm);
+    demandRows.push({ brand: stats.brand, model, activeDays, totalTrig: stats.totalTrig, avgDailyTrig, dailyDemand, pct });
+  }
+
+  // Also add demand rows with no matching campaign data
+  for (const [nm, dObj] of Object.entries(_demandMap)) {
+    if (!matchedNorm.has(nm)) {
+      demandRows.push({ brand: '—', model: dObj.raw, activeDays: 0, totalTrig: 0, avgDailyTrig: 0, dailyDemand: dObj.demand, pct: 0 });
+    }
+  }
+
+  // Sort: matched first (by pct asc = worst delivery first), unmapped last
+  demandRows.sort((a, b) => {
+    if (a.dailyDemand === null && b.dailyDemand !== null) return 1;
+    if (a.dailyDemand !== null && b.dailyDemand === null) return -1;
+    if (a.pct !== null && b.pct !== null) return a.pct - b.pct;
+    return a.model.localeCompare(b.model);
+  });
+
+  document.getElementById('demandMeta').textContent = `${demandRows.filter(r => r.dailyDemand !== null).length} models mapped · ${demandRows.filter(r => r.dailyDemand === null).length} unmapped`;
+
+  let html = '<table class="demand-table"><thead><tr>';
+  html += '<th class="left">Model</th><th class="left">Brand</th>';
+  html += '<th>Daily Demand</th><th>Active Days</th><th>Total Triggers</th><th>Avg Daily Triggers</th>';
+  html += '<th style="min-width:160px">Delivery vs Demand</th><th>Status</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const r of demandRows) {
+    const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
+    const pct = r.pct;
+
+    // Progress bar color
+    let barColor = '#e2e5ea', badgeHtml = '';
+    if (hasDemand && pct !== null) {
+      if      (pct >= 80)  { barColor = '#16a34a'; badgeHtml = `<span class="badge badge-green">On Track</span>`; }
+      else if (pct >= 50)  { barColor = '#ca8a04'; badgeHtml = `<span class="badge badge-yellow">Partial</span>`; }
+      else if (pct > 0)    { barColor = '#dc2626'; badgeHtml = `<span class="badge badge-red">Under</span>`; }
+      else                 { barColor = '#94a3b8'; badgeHtml = `<span class="badge badge-grey">No Triggers</span>`; }
+    } else if (!hasDemand && r.dailyDemand !== null) {
+      badgeHtml = `<span class="badge badge-grey">No Demand Set</span>`;
+    } else if (r.dailyDemand === null) {
+      badgeHtml = `<span class="badge badge-grey">Not in Demand</span>`;
+    }
+
+    const barWidth = hasDemand && pct !== null ? Math.min(100, pct).toFixed(1) : 0;
+    const pctLabel = hasDemand && pct !== null ? `${pct.toFixed(1)}%` : '—';
+
+    html += '<tr>';
+    html += `<td style="font-weight:600">${r.model}</td>`;
+    html += `<td style="color:var(--text2)">${r.brand}</td>`;
+    html += `<td class="td-right">${r.dailyDemand !== null ? Math.round(r.dailyDemand).toLocaleString('en-IN') : '<span class="unmapped">not set</span>'}</td>`;
+    html += `<td class="td-right">${r.activeDays > 0 ? r.activeDays : '—'}</td>`;
+    html += `<td class="td-right">${r.totalTrig > 0 ? Math.round(r.totalTrig).toLocaleString('en-IN') : '—'}</td>`;
+    html += `<td class="td-right">${r.avgDailyTrig > 0 ? r.avgDailyTrig.toFixed(1) : '—'}</td>`;
+    html += `<td><div class="progress-bar-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${barWidth}%;background:${barColor}"></div></div><span class="pct-label" style="color:${barColor}">${pctLabel}</span></div></td>`;
+    html += `<td>${badgeHtml}</td>`;
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+  document.getElementById('demandContainer').innerHTML = html;
+}
+
 loadData();
 </script>
 </body>
