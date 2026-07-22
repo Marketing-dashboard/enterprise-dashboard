@@ -395,10 +395,10 @@ auth.onAuthStateChanged(async user => {
 
   if (ADMINS.includes(email)) {
     _isAdmin = true;
-    await ensureApproved(user);
     showScreen('app');
     document.getElementById('adminFab').style.display = 'flex';
     loadData();
+    ensureApproved(user).catch(() => {});
     return;
   }
   // Regular user — check Firestore
