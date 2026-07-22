@@ -238,6 +238,13 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
 
 <!-- ═══════════ DEMAND VS DELIVERY SECTION ═══════════ -->
 <div id="demandSection">
+  <div class="filters">
+    <div class="filter-group">
+      <label>Brand</label>
+      <select id="d-brand" onchange="renderDemand()"><option value="">All Brands</option></select>
+    </div>
+    <button class="reset-btn" onclick="document.getElementById('d-brand').value='';renderDemand()">Reset</button>
+  </div>
   <div style="padding:16px 20px 20px">
     <div class="demand-card">
       <div class="demand-header">
@@ -534,9 +541,17 @@ function renderTable() {
 function renderDemand() {
   if (!_rows.length) return;
 
+  // Populate brand filter
+  const dBrandSel = document.getElementById('d-brand');
+  const curBrand  = dBrandSel.value;
+  const allBrands = [...new Set(_rows.map(r => r.brand))].filter(Boolean).sort();
+  dBrandSel.innerHTML = '<option value="">All Brands</option>' + allBrands.map(b => `<option value="${b}"${b===curBrand?' selected':''}>${b}</option>`).join('');
+  const brandFilter = dBrandSel.value;
+
   // Per model: total combTrig and active days (unique dates with any campaign)
   const modelStats = {};
   for (const r of _rows) {
+    if (brandFilter && r.brand !== brandFilter) continue;
     const key = r.model;
     if (!modelStats[key]) modelStats[key] = { brand: r.brand, model: r.model, totalTrig: 0, dates: new Set() };
     modelStats[key].totalTrig += r.combTrig;
