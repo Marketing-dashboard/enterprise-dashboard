@@ -274,6 +274,10 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
         <select id="f-brand" onchange="applyFilters()"><option value="">All Brands</option></select>
       </div>
       <div class="filter-group">
+        <label>Segment</label>
+        <select id="f-segment" onchange="applyFilters()"><option value="">All Segments</option></select>
+      </div>
+      <div class="filter-group">
         <label>Model</label>
         <select id="f-model" onchange="applyFilters()"><option value="">All Models</option></select>
       </div>
@@ -584,10 +588,10 @@ async function loadData(){
     // Enterprise
     const entMap={};
     for(const r of parseCSV(eT)){
-      const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim(), bu=(r['BU Type']||'').trim(), month=(r['Month']||'').trim();
+      const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim(), bu=(r['BU Type']||'').trim(), month=(r['Month']||'').trim(), segment=(r['Segment']||'').trim();
       if(!date||!brand||!model) continue;
       const k=`${date}|${brand}|${model}|${bu}`;
-      if(!entMap[k]) entMap[k]={date,brand,model,bu,month,spends:0,leads:0};
+      if(!entMap[k]) entMap[k]={date,brand,model,bu,month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
     // Triggers
@@ -606,16 +610,16 @@ async function loadData(){
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
       comboSet.add(ck);
-      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month};
+      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:v.segment};
     }
     _rows=[];
     for(const ck of [...comboSet].sort()){
-      const {date,brand,model,month}=comboMeta[ck];
+      const {date,brand,model,month,segment}=comboMeta[ck];
       const aw=entMap[`${date}|${brand}|${model}|Adwords`]||{spends:0,leads:0};
       const fb=entMap[`${date}|${brand}|${model}|MS-FB`]||{spends:0,leads:0};
       const at=trigMap[`${date}|${brand}|${model}|Adwords`]||0;
       const ft=trigMap[`${date}|${brand}|${model}|MS-FB`]||0;
-      _rows.push({date,brand,model,month,awSpend:aw.spends,awLeads:aw.leads,awTrig:at,fbSpend:fb.spends,fbLeads:fb.leads,fbTrig:ft,combSpend:aw.spends+fb.spends,combLeads:aw.leads+fb.leads,combTrig:at+ft});
+      _rows.push({date,brand,model,month,segment,awSpend:aw.spends,awLeads:aw.leads,awTrig:at,fbSpend:fb.spends,fbLeads:fb.leads,fbTrig:ft,combSpend:aw.spends+fb.spends,combLeads:aw.leads+fb.leads,combTrig:at+ft});
     }
     populateFilters(); applyFilters(); renderDemand();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
@@ -639,12 +643,16 @@ function switchTab(tab){
 function populateFilters(){
   const months=[...new Set(_rows.map(r=>r.month))].filter(Boolean).sort();
   const brands=[...new Set(_rows.map(r=>r.brand))].filter(Boolean).sort();
+  const segments=[...new Set(_rows.map(r=>r.segment))].filter(Boolean).sort();
   const mSel=document.getElementById('f-month'), cur=mSel.value;
   mSel.innerHTML='<option value="">All Months</option>'+months.map(m=>`<option value="${m}">${m}</option>`).join('');
   if(cur) mSel.value=cur;
   const bSel=document.getElementById('f-brand'), bcur=bSel.value;
   bSel.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option value="${b}">${b}</option>`).join('');
   if(bcur) bSel.value=bcur;
+  const sSel=document.getElementById('f-segment'), scur=sSel.value;
+  sSel.innerHTML='<option value="">All Segments</option>'+segments.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(scur) sSel.value=scur;
   const dates=_rows.map(r=>r.date).sort();
   if(dates.length){
     const fd=document.getElementById('f-from'), td=document.getElementById('f-to');
@@ -660,11 +668,13 @@ function updateModelFilter(brand){
 }
 function applyFilters(){
   const month=document.getElementById('f-month').value, brand=document.getElementById('f-brand').value;
+  const segment=document.getElementById('f-segment').value;
   const model=document.getElementById('f-model').value, from=document.getElementById('f-from').value, to=document.getElementById('f-to').value;
   updateModelFilter(brand);
   _filtered=_rows.filter(r=>{
     if(month&&r.month!==month) return false;
     if(brand&&r.brand!==brand) return false;
+    if(segment&&r.segment!==segment) return false;
     if(model&&r.model!==model) return false;
     if(from&&r.date<from) return false;
     if(to&&r.date>to) return false;
@@ -673,7 +683,7 @@ function applyFilters(){
   renderKPIs(); renderTable();
 }
 function resetFilters(){
-  ['f-month','f-brand','f-model','f-from','f-to'].forEach(id=>document.getElementById(id).value='');
+  ['f-month','f-brand','f-segment','f-model','f-from','f-to'].forEach(id=>document.getElementById(id).value='');
   populateFilters(); applyFilters();
 }
 function renderKPIs(){
