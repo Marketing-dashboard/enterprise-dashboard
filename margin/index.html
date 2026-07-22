@@ -247,8 +247,8 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
       <label>Status</label>
       <select id="d-status" onchange="renderDemand()">
         <option value="">All Statuses</option>
-        <option value="on-track">On Track (≥80%)</option>
-        <option value="partial">Partial (50–79%)</option>
+        <option value="on-track">On Track (≥70%)</option>
+        <option value="partial">Partial (50–69%)</option>
         <option value="under">Under (&lt;50%)</option>
         <option value="no-triggers">No Triggers</option>
         <option value="no-demand">No Demand Set</option>
@@ -525,8 +525,9 @@ function renderTable() {
   html += '<th class="fb fb-first">Spends</th><th class="fb">Leads</th><th class="fb">TLeads</th><th class="fb">CPL</th><th class="fb fb-last">TCPL</th>';
   html += '<th class="comb comb-first">Spends</th><th class="comb">Leads</th><th class="comb">TLeads</th><th class="comb">CPL</th><th class="comb comb-last">TCPL</th>';
   html += '</tr></thead><tbody>';
+  const sortedRows = [..._filtered].sort((a,b) => b.date.localeCompare(a.date));
   let tots = {awSpend:0,awLeads:0,awTrig:0,fbSpend:0,fbLeads:0,fbTrig:0,combSpend:0,combLeads:0,combTrig:0};
-  for (const r of _filtered) {
+  for (const r of sortedRows) {
     tots.awSpend+=r.awSpend; tots.awLeads+=r.awLeads; tots.awTrig+=r.awTrig;
     tots.fbSpend+=r.fbSpend; tots.fbLeads+=r.fbLeads; tots.fbTrig+=r.fbTrig;
     tots.combSpend+=r.combSpend; tots.combLeads+=r.combLeads; tots.combTrig+=r.combTrig;
@@ -585,10 +586,12 @@ function renderDemand() {
     demandRows.push({ brand: stats.brand, model, activeDays, totalTrig: stats.totalTrig, avgDailyTrig, dailyDemand, pct });
   }
 
-  // Also add demand rows with no matching campaign data
-  for (const [nm, dObj] of Object.entries(_demandMap)) {
-    if (!matchedNorm.has(nm)) {
-      demandRows.push({ brand: '—', model: dObj.raw, activeDays: 0, totalTrig: 0, avgDailyTrig: 0, dailyDemand: dObj.demand, pct: 0 });
+  // Only add unmapped demand rows when no brand filter is active (they have no brand info)
+  if (!brandFilter) {
+    for (const [nm, dObj] of Object.entries(_demandMap)) {
+      if (!matchedNorm.has(nm)) {
+        demandRows.push({ brand: '—', model: dObj.raw, activeDays: 0, totalTrig: 0, avgDailyTrig: 0, dailyDemand: dObj.demand, pct: 0 });
+      }
     }
   }
 
@@ -596,7 +599,7 @@ function renderDemand() {
   function sortRank(r) {
     const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
     if (!hasDemand) return 5;           // no demand set or not in demand sheet
-    if (r.pct >= 80)  return 1;         // on track
+    if (r.pct >= 70)  return 1;         // on track
     if (r.pct >= 50)  return 2;         // partial
     if (r.pct > 0)    return 3;         // under
     return 4;                           // no triggers
@@ -612,8 +615,8 @@ function renderDemand() {
   const visibleRows = statusFilter ? demandRows.filter(r => {
     const hasDemand = r.dailyDemand !== null && r.dailyDemand > 0;
     const rank = sortRank(r);
-    if (statusFilter === 'on-track')   return hasDemand && r.pct >= 80;
-    if (statusFilter === 'partial')    return hasDemand && r.pct >= 50 && r.pct < 80;
+    if (statusFilter === 'on-track')   return hasDemand && r.pct >= 70;
+    if (statusFilter === 'partial')    return hasDemand && r.pct >= 50 && r.pct < 70;
     if (statusFilter === 'under')      return hasDemand && r.pct > 0 && r.pct < 50;
     if (statusFilter === 'no-triggers')return hasDemand && r.pct === 0;
     if (statusFilter === 'no-demand')  return !hasDemand;
@@ -640,7 +643,7 @@ function renderDemand() {
     // Progress bar color
     let barColor = '#e2e5ea', badgeHtml = '';
     if (hasDemand && pct !== null) {
-      if      (pct >= 80)  { barColor = '#16a34a'; badgeHtml = `<span class="badge badge-green">On Track</span>`; }
+      if      (pct >= 70)  { barColor = '#16a34a'; badgeHtml = `<span class="badge badge-green">On Track</span>`; }
       else if (pct >= 50)  { barColor = '#ca8a04'; badgeHtml = `<span class="badge badge-yellow">Partial</span>`; }
       else if (pct > 0)    { barColor = '#dc2626'; badgeHtml = `<span class="badge badge-red">Under</span>`; }
       else                 { barColor = '#94a3b8'; badgeHtml = `<span class="badge badge-grey">No Triggers</span>`; }
