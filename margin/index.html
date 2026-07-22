@@ -317,7 +317,9 @@ async function loadData() {
       if (!date || !finalBrand || !finalModel) continue;
       const k = `${date}|${finalBrand}|${finalModel}|${src}`;
       if (!trigMap[k]) trigMap[k] = 0;
-      trigMap[k] += pn(r['Triggered']);
+      const JLR_CITROEN = ['jlr','citroen','citroën'];
+      const isJlrCitroen = JLR_CITROEN.some(b => finalBrand.toLowerCase().includes(b));
+      trigMap[k] += pn(r['Triggered']) + (isJlrCitroen ? pn(r['Triggered in List_ID']) : 0);
     }
 
     // Build unified rows: enumerate all date+brand+model combos
