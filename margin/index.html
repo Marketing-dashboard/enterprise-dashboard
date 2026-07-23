@@ -537,7 +537,7 @@ const ENT_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 
-let _rows=[], _filtered=[], _demandMap={};
+let _rows=[], _filtered=[], _demandMap={}, _trigMap={};
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
 function parseCSVLine(line){
@@ -606,7 +606,7 @@ async function loadData(){
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
     // Triggers
-    const trigMap={}, segMap={};
+    _trigMap={}; const trigMap=_trigMap, segMap={};
     for(const r of parseCSV(tT)){
       const date=normalizeDate(r['Date']), fb=(r['Final_Brand']||'').trim(), fm=(r['Final_Model']||'').trim();
       let src=(r['final_source']||'').trim(); if(src==='MS_FB') src='MS-FB';
