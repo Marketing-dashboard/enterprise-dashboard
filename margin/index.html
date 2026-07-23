@@ -607,22 +607,18 @@ async function loadData(){
       const seg=(r['Segment']||'').trim();
       if(seg) segMap[`${date}|${fb}|${fm}`]=seg;
     }
-    // Build brand→segment lookup so days without triggers still inherit the correct segment
-    const brandSegMap={};
-    for(const [ck,seg] of Object.entries(segMap)){
-      const brand=ck.split('|')[1];
-      if(seg && !brandSegMap[brand]) brandSegMap[brand]=seg;
-    }
-    for(const v of Object.values(entMap)){
-      if(v.segment && !brandSegMap[v.brand]) brandSegMap[v.brand]=v.segment;
-    }
-    // Build rows
+    // Build rows — collect segment from any entMap entry for this combo (take first non-empty)
     const comboSet=new Set(), comboMeta={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
       comboSet.add(ck);
-      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:segMap[ck]||v.segment||brandSegMap[v.brand]||''};
+      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
+      if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
     }
+    // Fill any still-missing segments using brand-level fallback
+    const brandSegMap={};
+    for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
+    for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
     // Pre-compute combined totals across ALL BU types per date|brand|model
     const combMap={};
     for(const [k,v] of Object.entries(entMap)){
