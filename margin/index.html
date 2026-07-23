@@ -613,7 +613,7 @@ async function loadData(){
       if(!date||!fb||!fm) continue;
       const k=`${date}|${fb}|${fm}|${src}`;
       if(!trigMap[k]) trigMap[k]=0;
-      const jlr=['jlr','citroen','citroën'].some(b=>fb.toLowerCase().includes(b));
+      const jlr=['jlr'].some(b=>fb.toLowerCase().includes(b));
       trigMap[k]+=pn(r['Triggered'])+(jlr?pn(r['Triggered in List_ID']):0);
       const seg=(r['Segment']||'').trim();
       if(seg) segMap[`${date}|${fb}|${fm}`]=seg;
