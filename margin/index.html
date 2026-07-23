@@ -540,13 +540,24 @@ const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 let _rows=[], _filtered=[], _demandMap={};
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
+function parseCSVLine(line){
+  const cols=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
+    else if(ch===','&&!inQ){ cols.push(cur.trim().replace(/\r/g,'')); cur=''; }
+    else cur+=ch;
+  }
+  cols.push(cur.trim().replace(/\r/g,''));
+  return cols;
+}
 function parseCSV(text){
   const lines=text.split('\n').filter(l=>l.trim());
   if(!lines.length) return [];
-  const headers=lines[0].split(',').map(h=>h.trim().replace(/\r/g,''));
+  const headers=parseCSVLine(lines[0]);
   return lines.slice(1).map(line=>{
-    const cols=line.split(','), obj={};
-    headers.forEach((h,i)=>{ obj[h]=(cols[i]||'').trim().replace(/\r/g,''); });
+    const cols=parseCSVLine(line), obj={};
+    headers.forEach((h,i)=>{ obj[h]=cols[i]||''; });
     return obj;
   }).filter(r=>Object.values(r).some(v=>v));
 }
