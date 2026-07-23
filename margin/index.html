@@ -605,7 +605,9 @@ async function loadData(){
       if(!entMap[k]) entMap[k]={date,brand,model,bu,month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
-    // Triggers — build per-source map AND combined map (all sources)
+    // Normalize brand/model for fuzzy key matching (handles accents, case)
+    const nb=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+    // Triggers — build per-source map AND combined map (all sources), keyed by normalized brand+model
     const trigMap={}, combTrigMap={}, segMap={};
     for(const r of parseCSV(tT)){
       const date=normalizeDate(r['Date']), fb=(r['Final_Brand']||'').trim(), fm=(r['Final_Model']||'').trim();
@@ -613,12 +615,13 @@ async function loadData(){
       if(!date||!fb||!fm) continue;
       const jlr=['jlr'].some(b=>fb.toLowerCase().includes(b));
       const trigs=pn(r['Triggered'])+(jlr?pn(r['Triggered in List_ID']):0);
-      const k=`${date}|${fb}|${fm}|${src}`;
-      trigMap[k]=(trigMap[k]||0)+trigs;
-      const ck=`${date}|${fb}|${fm}`;
-      combTrigMap[ck]=(combTrigMap[ck]||0)+trigs;
+      const nk=`${date}|${nb(fb)}|${nb(fm)}`;
+      trigMap[`${nk}|${src}`]=(trigMap[`${nk}|${src}`]||0)+trigs;
+      combTrigMap[nk]=(combTrigMap[nk]||0)+trigs;
       const seg=(r['Segment']||'').trim();
-      if(seg) segMap[ck]=seg;
+      if(seg) segMap[nk]=seg;
+      // also store original brand/model name so trigger-only rows display correctly
+      if(!segMap[`_orig_${nk}`]) segMap[`_orig_${nk}`]=`${fb}|||${fm}`;
     }
     // Pre-compute combined totals across ALL BU types per date|brand|model
     const combMap={};
@@ -627,39 +630,39 @@ async function loadData(){
       if(!combMap[ck]) combMap[ck]={spends:0,leads:0};
       combMap[ck].spends+=v.spends; combMap[ck].leads+=v.leads;
     }
-    // Build comboSet from entMap (spend rows)
+    // Build comboSet from entMap (spend rows), using normalized keys to match triggers
     const comboSet=new Set(), comboMeta={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
-      comboSet.add(ck);
-      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
-      if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
+      const nk=`${v.date}|${nb(v.brand)}|${nb(v.model)}`;
+      comboSet.add(nk);
+      if(!comboMeta[nk]) comboMeta[nk]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:'',origCk:ck};
+      if(!comboMeta[nk].segment) comboMeta[nk].segment=v.segment||segMap[nk]||'';
     }
-    // Also add trigger-only rows (models with triggers but no spend in Enterprise_Raw)
-    for(const tk of Object.keys(trigMap)){
-      const [date,brand,model]=tk.split('|');
-      const ck=`${date}|${brand}|${model}`;
-      if(!comboSet.has(ck)){
-        comboSet.add(ck);
-        const seg=segMap[ck]||'';
-        // derive month from date string e.g. "2026-07-22" → "Jul-26"
+    // Also add trigger-only rows (models with no spend in Enterprise_Raw)
+    for(const nk of Object.keys(combTrigMap)){
+      if(!comboSet.has(nk)){
+        comboSet.add(nk);
+        const origParts=(segMap[`_orig_${nk}`]||'').split('|||');
+        const [date,bnorm,mnorm]=nk.split('|');
+        const brand=origParts[0]||bnorm, model=origParts[1]||mnorm;
         const mo=date?new Date(date).toLocaleString('en-IN',{month:'short',year:'2-digit'}).replace(' ','-'):'';
-        comboMeta[ck]={date,brand,model,month:mo,segment:seg};
+        comboMeta[nk]={date,brand,model,month:mo,segment:segMap[nk]||'',origCk:`${date}|${brand}|${model}`};
       }
     }
     // Fill still-missing segments using brand-level fallback
     const brandSegMap={};
-    for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
-    for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
+    for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[nb(m.brand)]=m.segment;
+    for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[nb(m.brand)]||'';
     _rows=[];
-    for(const ck of [...comboSet].sort()){
-      const {date,brand,model,month,segment}=comboMeta[ck];
-      const aw=entMap[`${date}|${brand}|${model}|Adwords`]||{spends:0,leads:0};
-      const fb=entMap[`${date}|${brand}|${model}|MS-FB`]||{spends:0,leads:0};
-      const at=trigMap[`${date}|${brand}|${model}|Adwords`]||0;
-      const ft=trigMap[`${date}|${brand}|${model}|MS-FB`]||0;
-      const ct=combTrigMap[`${date}|${brand}|${model}`]||0;
-      const cb=combMap[ck]||{spends:0,leads:0};
+    for(const nk of [...comboSet].sort()){
+      const {date,brand,model,month,segment,origCk}=comboMeta[nk];
+      const aw=entMap[`${origCk}|Adwords`]||{spends:0,leads:0};
+      const fb=entMap[`${origCk}|MS-FB`]||{spends:0,leads:0};
+      const at=trigMap[`${nk}|Adwords`]||0;
+      const ft=trigMap[`${nk}|MS-FB`]||0;
+      const ct=combTrigMap[nk]||0;
+      const cb=combMap[origCk]||{spends:0,leads:0};
       _rows.push({date,brand,model,month,segment,awSpend:aw.spends,awLeads:aw.leads,awTrig:at,fbSpend:fb.spends,fbLeads:fb.leads,fbTrig:ft,combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
     }
     populateFilters(); applyFilters(); renderDemand();
