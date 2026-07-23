@@ -612,7 +612,7 @@ async function loadData(){
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
       comboSet.add(ck);
-      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:segMap[ck]||''};
+      if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:segMap[ck]||v.segment||''};
     }
     // Pre-compute combined totals across ALL BU types per date|brand|model
     const combMap={};
