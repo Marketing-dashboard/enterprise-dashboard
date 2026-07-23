@@ -605,20 +605,18 @@ async function loadData(){
       if(!entMap[k]) entMap[k]={date,brand,model,bu,month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
-    // Triggers — per-source map AND combined map (all sources)
-    const trigMap={}, combTrigMap={}, segMap={};
+    // Triggers
+    const trigMap={}, segMap={};
     for(const r of parseCSV(tT)){
       const date=normalizeDate(r['Date']), fb=(r['Final_Brand']||'').trim(), fm=(r['Final_Model']||'').trim();
       let src=(r['final_source']||'').trim(); if(src==='MS_FB') src='MS-FB';
       if(!date||!fb||!fm) continue;
-      const jlr=['jlr'].some(b=>fb.toLowerCase().includes(b));
-      const trigs=pn(r['Triggered'])+(jlr?pn(r['Triggered in List_ID']):0);
       const k=`${date}|${fb}|${fm}|${src}`;
-      trigMap[k]=(trigMap[k]||0)+trigs;
-      const ck=`${date}|${fb}|${fm}`;
-      combTrigMap[ck]=(combTrigMap[ck]||0)+trigs;
+      if(!trigMap[k]) trigMap[k]=0;
+      const jlr=['jlr'].some(b=>fb.toLowerCase().includes(b));
+      trigMap[k]+=pn(r['Triggered'])+(jlr?pn(r['Triggered in List_ID']):0);
       const seg=(r['Segment']||'').trim();
-      if(seg) segMap[ck]=seg;
+      if(seg) segMap[`${date}|${fb}|${fm}`]=seg;
     }
     // Pre-compute combined totals across ALL BU types per date|brand|model
     const combMap={};
@@ -627,7 +625,7 @@ async function loadData(){
       if(!combMap[ck]) combMap[ck]={spends:0,leads:0};
       combMap[ck].spends+=v.spends; combMap[ck].leads+=v.leads;
     }
-    // Build comboSet from entMap (spend rows)
+    // Build rows
     const comboSet=new Set(), comboMeta={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
@@ -635,16 +633,7 @@ async function loadData(){
       if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
       if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
     }
-    // Also add trigger-only rows (models with no spend in Enterprise_Raw)
-    for(const ck of Object.keys(combTrigMap)){
-      if(!comboSet.has(ck)){
-        comboSet.add(ck);
-        const [date,brand,model]=ck.split('|');
-        const mo=date?new Date(date).toLocaleString('en-IN',{month:'short',year:'2-digit'}).replace(' ','-'):'';
-        comboMeta[ck]={date,brand,model,month:mo,segment:segMap[ck]||''};
-      }
-    }
-    // Fill still-missing segments using brand-level fallback
+    // Fill missing segments using brand-level fallback
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
     for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
@@ -652,12 +641,11 @@ async function loadData(){
     for(const ck of [...comboSet].sort()){
       const {date,brand,model,month,segment}=comboMeta[ck];
       const aw=entMap[`${ck}|Adwords`]||{spends:0,leads:0};
-      const fbE=entMap[`${ck}|MS-FB`]||{spends:0,leads:0};
+      const fb=entMap[`${ck}|MS-FB`]||{spends:0,leads:0};
       const at=trigMap[`${ck}|Adwords`]||0;
       const ft=trigMap[`${ck}|MS-FB`]||0;
-      const ct=combTrigMap[ck]||0;
       const cb=combMap[ck]||{spends:0,leads:0};
-      _rows.push({date,brand,model,month,segment,awSpend:aw.spends,awLeads:aw.leads,awTrig:at,fbSpend:fbE.spends,fbLeads:fbE.leads,fbTrig:ft,combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
+      _rows.push({date,brand,model,month,segment,awSpend:aw.spends,awLeads:aw.leads,awTrig:at,fbSpend:fb.spends,fbLeads:fb.leads,fbTrig:ft,combSpend:cb.spends,combLeads:cb.leads,combTrig:at+ft});
     }
     populateFilters(); applyFilters(); renderDemand();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
