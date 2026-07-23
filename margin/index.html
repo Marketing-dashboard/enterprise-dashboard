@@ -607,7 +607,14 @@ async function loadData(){
       const seg=(r['Segment']||'').trim();
       if(seg) segMap[`${date}|${fb}|${fm}`]=seg;
     }
-    // Build rows — collect segment from any entMap entry for this combo (take first non-empty)
+    // Pre-compute combined totals across ALL BU types per date|brand|model
+    const combMap={};
+    for(const v of Object.values(entMap)){
+      const ck=`${v.date}|${v.brand}|${v.model}`;
+      if(!combMap[ck]) combMap[ck]={spends:0,leads:0};
+      combMap[ck].spends+=v.spends; combMap[ck].leads+=v.leads;
+    }
+    // Build comboSet from entMap (spend rows)
     const comboSet=new Set(), comboMeta={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
@@ -615,17 +622,22 @@ async function loadData(){
       if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
       if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
     }
-    // Fill any still-missing segments using brand-level fallback
+    // Also add trigger-only rows (models with triggers but no spend in Enterprise_Raw)
+    for(const tk of Object.keys(trigMap)){
+      const [date,brand,model]=tk.split('|');
+      const ck=`${date}|${brand}|${model}`;
+      if(!comboSet.has(ck)){
+        comboSet.add(ck);
+        const seg=segMap[ck]||'';
+        // derive month from date string e.g. "2026-07-22" → "Jul-26"
+        const mo=date?new Date(date).toLocaleString('en-IN',{month:'short',year:'2-digit'}).replace(' ','-'):'';
+        comboMeta[ck]={date,brand,model,month:mo,segment:seg};
+      }
+    }
+    // Fill still-missing segments using brand-level fallback
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
     for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
-    // Pre-compute combined totals across ALL BU types per date|brand|model
-    const combMap={};
-    for(const [k,v] of Object.entries(entMap)){
-      const ck=`${v.date}|${v.brand}|${v.model}`;
-      if(!combMap[ck]) combMap[ck]={spends:0,leads:0};
-      combMap[ck].spends+=v.spends; combMap[ck].leads+=v.leads;
-    }
     _rows=[];
     for(const ck of [...comboSet].sort()){
       const {date,brand,model,month,segment}=comboMeta[ck];
