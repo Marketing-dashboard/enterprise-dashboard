@@ -633,15 +633,16 @@ async function loadData(){
     const entMap={};
     for(const r of parseCSV(eT)){
       const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim(), bu=(r['BU Type']||'').trim(), month=(r['Month']||'').trim(), segment=(r['Segment']||'').trim();
+      const ct=(r['Campaign Type']||'').trim()||bu; // use Campaign Type column, fall back to BU Type
       if(!date||!brand||!model) continue;
-      const k=`${date}|${brand}|${model}|${bu}`;
-      if(!entMap[k]) entMap[k]={date,brand,model,bu,month,segment,spends:0,leads:0};
+      const k=`${date}|${brand}|${model}|${ct}`;
+      if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
     // Campaign-type rows (for hierarchical view)
     _ctRows=[];
     for(const v of Object.values(entMap)){
-      _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:getBuGroup(v.bu),month:v.month,segment:v.segment,spends:v.spends,leads:v.leads});
+      _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads});
     }
     // Triggers
     _trigMap={}; const trigMap=_trigMap, segMap={};
@@ -686,11 +687,18 @@ async function loadData(){
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
     for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
+    // Aggregate spend/leads per buGroup (Adwords / MS-FB) for KPI columns
+    const awMap={}, fbMap={};
+    for(const v of Object.values(entMap)){
+      const ck=`${v.date}|${v.brand}|${v.model}`;
+      if(v.buGroup==='Adwords'){ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
+      else if(v.buGroup==='MS-FB'){ if(!fbMap[ck]) fbMap[ck]={spends:0,leads:0}; fbMap[ck].spends+=v.spends; fbMap[ck].leads+=v.leads; }
+    }
     _rows=[];
     for(const ck of [...comboSet].sort()){
       const {date,brand,model,month,segment}=comboMeta[ck];
-      const aw=entMap[`${ck}|Adwords`]||{spends:0,leads:0};
-      const fb=entMap[`${ck}|MS-FB`]||{spends:0,leads:0};
+      const aw=awMap[ck]||{spends:0,leads:0};
+      const fb=fbMap[ck]||{spends:0,leads:0};
       const at=trigMap[`${ck}|Adwords`]||0;
       const ft=trigMap[`${ck}|MS-FB`]||0;
       const cb=combMap[ck]||{spends:0,leads:0};
