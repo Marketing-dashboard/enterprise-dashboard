@@ -631,10 +631,14 @@ async function loadData(){
     }
     // Enterprise
     const entMap={};
-    for(const r of parseCSV(eT)){
+    const parsedEnt=parseCSV(eT);
+    // Detect if Campaign Type column is populated in the sheet
+    const hasCTCol=parsedEnt.some(r=>(r['Campaign Type']||'').trim());
+    for(const r of parsedEnt){
       const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim(), bu=(r['BU Type']||'').trim(), month=(r['Month']||'').trim(), segment=(r['Segment']||'').trim();
-      const ct=(r['Campaign Type']||'').trim()||bu; // use Campaign Type column, fall back to BU Type
-      if(!date||!brand||!model) continue;
+      // If the sheet has a Campaign Type column, use it exclusively (skip rows where it's blank to avoid double-counting with BU Type rows)
+      const ct=hasCTCol?(r['Campaign Type']||'').trim():bu;
+      if(!date||!brand||!model||!ct) continue;
       const k=`${date}|${brand}|${model}|${ct}`;
       if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
