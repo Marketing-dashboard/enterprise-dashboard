@@ -192,6 +192,32 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
 
 #dailySection{display:block}
 #demandSection{display:none}
+
+/* ── HIERARCHICAL TABLE ── */
+.hier-table{width:100%;border-collapse:collapse;font-size:12px}
+.hier-table thead th{padding:9px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);text-align:right;border-bottom:2px solid var(--border);background:var(--surface2);white-space:nowrap;position:sticky;top:52px;z-index:10}
+.hier-table thead th:first-child{text-align:left;min-width:280px}
+.hier-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+.hier-table tbody tr.hidden{display:none}
+.hier-table tbody td{padding:7px 12px;vertical-align:middle;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hier-table tbody td:first-child{text-align:left}
+.row-date td:first-child{font-weight:700;font-size:13px;color:var(--text);padding-left:10px;background:var(--surface2)}
+.row-date td{background:var(--surface2)}
+.row-date:hover td{background:#eaecf5!important}
+.row-brand td:first-child{font-weight:600;padding-left:28px}
+.row-brand:hover td{background:#f5f7ff}
+.row-model td:first-child{padding-left:48px;color:var(--text2)}
+.row-model:hover td{background:#f8f9ff}
+.row-ct td:first-child{padding-left:72px}
+.row-ct{color:var(--text2)}
+.row-ct:hover td{background:#f8f9ff}
+.expand-icon{display:inline-block;width:14px;font-size:10px;color:var(--text3);margin-right:5px;user-select:none}
+.ct-tag{display:inline-flex;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.ct-tag.ct-aw{background:var(--aw-bg);color:var(--aw)}
+.ct-tag.ct-fb{background:var(--fb-bg);color:var(--fb)}
+.ct-tag.ct-other{background:#f1f5f9;color:#64748b}
+.hier-tfoot td{padding:9px 12px;text-align:right;font-weight:700;background:var(--surface2);border-top:2px solid var(--border);font-variant-numeric:tabular-nums}
+.hier-tfoot td:first-child{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text2)}
 </style>
 </head>
 <body>
@@ -537,7 +563,7 @@ const ENT_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 
-let _rows=[], _filtered=[], _demandMap={}, _trigMap={};
+let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[];
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
 function parseCSVLine(line){
@@ -580,6 +606,13 @@ function fmtL(n){ return n===0?'—':Math.round(n).toLocaleString('en-IN'); }
 function fmtC(s,l){ return l===0?'—':'₹'+Math.round(s/l).toLocaleString('en-IN'); }
 function normModel(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
 
+function getBuGroup(bu){
+  const l=(bu||'').toLowerCase();
+  if(['search','demand gen','pmax','adwords','google'].some(t=>l.includes(t))) return 'Adwords';
+  if(['ctwa','ms-fb','ms_fb','meta','facebook'].some(t=>l.includes(t))) return 'MS-FB';
+  return 'Other';
+}
+
 async function loadData(){
   document.getElementById('statusChip').textContent='Loading…';
   document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
@@ -604,6 +637,11 @@ async function loadData(){
       const k=`${date}|${brand}|${model}|${bu}`;
       if(!entMap[k]) entMap[k]={date,brand,model,bu,month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
+    }
+    // Campaign-type rows (for hierarchical view)
+    _ctRows=[];
+    for(const v of Object.values(entMap)){
+      _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:getBuGroup(v.bu),month:v.month,segment:v.segment,spends:v.spends,leads:v.leads});
     }
     // Triggers
     _trigMap={}; const trigMap=_trigMap, segMap={};
@@ -731,32 +769,116 @@ function renderKPIs(){
   document.getElementById('k-cpl').textContent=fmtC(tS,tL);
   document.getElementById('k-tcpl').textContent=fmtC(tS,tT);
 }
+function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 function renderTable(){
   document.getElementById('rowCount').textContent=`${_filtered.length} rows`;
   if(!_filtered.length){ document.getElementById('tableContainer').innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
-  const sorted=[..._filtered].sort((a,b)=>b.date.localeCompare(a.date));
-  let h='<table><thead><tr class="group-row">';
-  h+='<th class="th-fixed" colspan="3" style="text-align:left;font-size:11px;font-weight:600;color:var(--text2)">Daily Performance</th>';
-  h+='<th class="th-aw" colspan="5">📊 Adwords</th><th class="th-fb" colspan="5">📱 MS-FB</th><th class="th-comb" colspan="5">🔗 Combined</th></tr>';
-  h+='<tr class="col-row"><th class="th-fixed left">Date</th><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
-  h+='<th class="aw aw-first">Spends</th><th class="aw">Leads</th><th class="aw">TLeads</th><th class="aw">CPL</th><th class="aw aw-last">TCPL</th>';
-  h+='<th class="fb fb-first">Spends</th><th class="fb">Leads</th><th class="fb">TLeads</th><th class="fb">CPL</th><th class="fb fb-last">TCPL</th>';
-  h+='<th class="comb comb-first">Spends</th><th class="comb">Leads</th><th class="comb">TLeads</th><th class="comb">CPL</th><th class="comb comb-last">TCPL</th>';
-  h+='</tr></thead><tbody>';
-  let t={awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,cS:0,cL:0,cT:0};
-  for(const r of sorted){
-    t.awS+=r.awSpend;t.awL+=r.awLeads;t.awT+=r.awTrig;t.fbS+=r.fbSpend;t.fbL+=r.fbLeads;t.fbT+=r.fbTrig;t.cS+=r.combSpend;t.cL+=r.combLeads;t.cT+=r.combTrig;
-    h+=`<tr><td style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td><td style="font-weight:600">${r.brand}</td><td>${r.model}</td>`;
-    h+=`<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtL(r.awLeads)}</td><td class="td-num aw">${fmtL(r.awTrig)}</td><td class="td-num aw">${fmtC(r.awSpend,r.awLeads)}</td><td class="td-num aw">${fmtC(r.awSpend,r.awTrig)}</td>`;
-    h+=`<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtL(r.fbLeads)}</td><td class="td-num fb">${fmtL(r.fbTrig)}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbTrig)}</td>`;
-    h+=`<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtL(r.combLeads)}</td><td class="td-num comb">${fmtL(r.combTrig)}</td><td class="td-num comb">${fmtC(r.combSpend,r.combLeads)}</td><td class="td-num comb">${fmtC(r.combSpend,r.combTrig)}</td></tr>`;
+
+  // Build CT lookup keyed by date|brand|model (only for filtered brands/models/dates)
+  const filtSet=new Set(_filtered.map(r=>`${r.date}|${r.brand}|${r.model}`));
+  const ctByKey={};
+  for(const c of _ctRows){
+    const k=`${c.date}|${c.brand}|${c.model}`;
+    if(!filtSet.has(k)) continue;
+    if(!ctByKey[k]) ctByKey[k]=[];
+    ctByKey[k].push(c);
   }
-  h+='</tbody><tfoot><tr><td class="left" colspan="3">TOTAL</td>';
-  h+=`<td class="aw">${fmtNum(t.awS)}</td><td class="aw">${fmtL(t.awL)}</td><td class="aw">${fmtL(t.awT)}</td><td class="aw">${fmtC(t.awS,t.awL)}</td><td class="aw">${fmtC(t.awS,t.awT)}</td>`;
-  h+=`<td class="fb">${fmtNum(t.fbS)}</td><td class="fb">${fmtL(t.fbL)}</td><td class="fb">${fmtL(t.fbT)}</td><td class="fb">${fmtC(t.fbS,t.fbL)}</td><td class="fb">${fmtC(t.fbS,t.fbT)}</td>`;
-  h+=`<td class="comb">${fmtNum(t.cS)}</td><td class="comb">${fmtL(t.cL)}</td><td class="comb">${fmtL(t.cT)}</td><td class="comb">${fmtC(t.cS,t.cL)}</td><td class="comb">${fmtC(t.cS,t.cT)}</td>`;
-  h+='</tr></tfoot></table>';
-  document.getElementById('tableContainer').innerHTML=h;
+
+  // Sort: date desc, brand asc, model asc
+  const sorted=[..._filtered].sort((a,b)=>{
+    const dd=b.date.localeCompare(a.date); if(dd) return dd;
+    const db=a.brand.localeCompare(b.brand); if(db) return db;
+    return a.model.localeCompare(b.model);
+  });
+
+  // Pre-group by date → brand → [model rows]
+  const dateOrder=[], dateMap={};
+  for(const r of sorted){
+    if(!dateMap[r.date]){ dateMap[r.date]={}; dateOrder.push(r.date); }
+    if(!dateMap[r.date][r.brand]) dateMap[r.date][r.brand]=[];
+    dateMap[r.date][r.brand].push(r);
+  }
+
+  // Aggregate date totals and brand totals
+  const dateAgg={}, brandAgg={};
+  for(const r of _filtered){
+    if(!dateAgg[r.date]) dateAgg[r.date]={s:0,l:0,t:0};
+    dateAgg[r.date].s+=r.combSpend; dateAgg[r.date].l+=r.combLeads; dateAgg[r.date].t+=r.combTrig;
+    const bk=`${r.date}|${r.brand}`;
+    if(!brandAgg[bk]) brandAgg[bk]={s:0,l:0,t:0};
+    brandAgg[bk].s+=r.combSpend; brandAgg[bk].l+=r.combLeads; brandAgg[bk].t+=r.combTrig;
+  }
+
+  let h='<table class="hier-table"><thead><tr>';
+  h+='<th style="text-align:left">Date / Brand / Model / Campaign Type</th>';
+  h+='<th>Spends</th><th>Leads</th><th>TLeads</th><th>CPL</th><th>TCPL</th></tr></thead><tbody>';
+
+  let totS=0,totL=0,totT=0;
+
+  for(const date of dateOrder){
+    const da=dateAgg[date];
+    totS+=da.s; totL+=da.l; totT+=da.t;
+    h+=`<tr class="row-date" data-key="${escH(date)}" style="cursor:pointer">`;
+    h+=`<td><span class="expand-icon">▼</span>${fmtDate(date)}</td>`;
+    h+=`<td>${fmtNum(da.s)}</td><td>${fmtL(da.l)}</td><td>${fmtL(da.t)}</td><td>${fmtC(da.s,da.l)}</td><td>${fmtC(da.s,da.t)}</td></tr>`;
+
+    const brands=Object.keys(dateMap[date]).sort();
+    for(const brand of brands){
+      const bk=`${date}|${brand}`;
+      const ba=brandAgg[bk];
+      h+=`<tr class="row-brand" data-parent="${escH(date)}" data-key="${escH(bk)}" style="cursor:pointer">`;
+      h+=`<td><span class="expand-icon">▶</span>${escH(brand)}</td>`;
+      h+=`<td>${fmtNum(ba.s)}</td><td>${fmtL(ba.l)}</td><td>${fmtL(ba.t)}</td><td>${fmtC(ba.s,ba.l)}</td><td>${fmtC(ba.s,ba.t)}</td></tr>`;
+
+      for(const r of dateMap[date][brand]){
+        const mk=`${date}|${brand}|${r.model}`;
+        const cts=(ctByKey[mk]||[]).sort((a,b)=>a.campaignType.localeCompare(b.campaignType));
+        const hasCT=cts.length>0;
+        h+=`<tr class="row-model hidden" data-parent="${escH(bk)}" data-key="${escH(mk)}" style="cursor:${hasCT?'pointer':'default'}">`;
+        h+=`<td>${hasCT?`<span class="expand-icon">▶</span>`:'<span class="expand-icon" style="opacity:0">·</span>'}${escH(r.model)}</td>`;
+        h+=`<td>${fmtNum(r.combSpend)}</td><td>${fmtL(r.combLeads)}</td><td>${fmtL(r.combTrig)}</td><td>${fmtC(r.combSpend,r.combLeads)}</td><td>${fmtC(r.combSpend,r.combTrig)}</td></tr>`;
+
+        for(const ct of cts){
+          const cls=ct.buGroup==='Adwords'?'ct-aw':ct.buGroup==='MS-FB'?'ct-fb':'ct-other';
+          h+=`<tr class="row-ct hidden" data-parent="${escH(mk)}">`;
+          h+=`<td><span class="ct-tag ${cls}">${escH(ct.campaignType)}</span></td>`;
+          h+=`<td>${fmtNum(ct.spends)}</td><td>${fmtL(ct.leads)}</td><td>—</td><td>${fmtC(ct.spends,ct.leads)}</td><td>—</td></tr>`;
+        }
+      }
+    }
+  }
+
+  h+=`</tbody><tfoot><tr class="hier-tfoot"><td>TOTAL</td>`;
+  h+=`<td>${fmtNum(totS)}</td><td>${fmtL(totL)}</td><td>${fmtL(totT)}</td><td>${fmtC(totS,totL)}</td><td>${fmtC(totS,totT)}</td></tr></tfoot></table>`;
+  const tc=document.getElementById('tableContainer');
+  tc.innerHTML=h;
+  tc.onclick=e=>{
+    const tr=e.target.closest('tr[data-key]');
+    if(tr) toggleRow(tr.dataset.key);
+  };
+}
+
+function toggleRow(key){
+  const allRows=[...document.querySelectorAll('#tableContainer tr')];
+  const children=allRows.filter(tr=>tr.dataset.parent===key);
+  if(!children.length) return;
+  const expanding=children[0].classList.contains('hidden');
+  children.forEach(c=>{
+    if(expanding){ c.classList.remove('hidden'); }
+    else{ c.classList.add('hidden'); if(c.dataset.key) collapseChildren(c.dataset.key); }
+  });
+  const parentRow=allRows.find(tr=>tr.dataset.key===key);
+  if(parentRow){ const ic=parentRow.querySelector('.expand-icon'); if(ic) ic.textContent=expanding?'▼':'▶'; }
+}
+function collapseChildren(key){
+  const allRows=[...document.querySelectorAll('#tableContainer tr')];
+  allRows.filter(tr=>tr.dataset.parent===key).forEach(c=>{
+    c.classList.add('hidden');
+    if(c.dataset.key) collapseChildren(c.dataset.key);
+  });
+  const parentRow=allRows.find(tr=>tr.dataset.key===key);
+  if(parentRow){ const ic=parentRow.querySelector('.expand-icon'); if(ic) ic.textContent='▶'; }
 }
 
 function renderDemand(){
