@@ -643,26 +643,31 @@ async function loadData(){
       if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
-    // Campaign-type rows (for hierarchical view)
-    _ctRows=[];
-    for(const v of Object.values(entMap)){
-      _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads});
-    }
-    // Triggers
+    // Triggers — keyed by campaign type (if column exists) or source
     _trigMap={}; const trigMap=_trigMap, segMap={};
-    for(const r of parseCSV(tT)){
+    const combTrigMap={}; // sum of ALL sources per date|brand|model
+    const parsedTrig=parseCSV(tT);
+    const hasTrigCTCol=parsedTrig.some(r=>(r['Campaign Type']||'').trim());
+    for(const r of parsedTrig){
       const date=normalizeDate(r['Date']), fb=(r['Final_Brand']||'').trim(), fm=(r['Final_Model']||'').trim();
       let src=(r['final_source']||'').trim(); if(src==='MS_FB') src='MS-FB';
       if(!date||!fb||!fm) continue;
-      const k=`${date}|${fb}|${fm}|${src}`;
-      if(!trigMap[k]) trigMap[k]=0;
       const useListId=['jlr'].some(b=>fb.toLowerCase().includes(b)) ||
         (['citroen','citroën'].some(b=>fb.toLowerCase().includes(b)) && src==='MS-FB');
-      trigMap[k]+=pn(r['Triggered'])+(useListId?pn(r['Triggered in List_ID']):0);
+      const trig=pn(r['Triggered'])+(useListId?pn(r['Triggered in List_ID']):0);
+      // Key by campaign type when column exists, else by source
+      const ct=hasTrigCTCol?(r['Campaign Type']||'').trim()||src:src;
+      const k=`${date}|${fb}|${fm}|${ct}`;
+      if(!trigMap[k]) trigMap[k]=0;
+      trigMap[k]+=trig;
+      // Always accumulate into combined map (all sources)
+      const ck=`${date}|${fb}|${fm}`;
+      if(!combTrigMap[ck]) combTrigMap[ck]=0;
+      combTrigMap[ck]+=trig;
       const seg=(r['Segment']||'').trim();
-      if(seg) segMap[`${date}|${fb}|${fm}`]=seg;
+      if(seg) segMap[ck]=seg;
     }
-    // Pre-compute combined totals across ALL BU types per date|brand|model
+    // Pre-compute combined spend/leads across ALL campaign types per date|brand|model
     const combMap={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
@@ -677,21 +682,27 @@ async function loadData(){
       if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
       if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
     }
-    // Add trigger-only rows (have triggers but no spend in Enterprise_Raw)
-    for(const tk of Object.keys(trigMap)){
-      const parts=tk.split('|'); // date|brand|model|src
-      const ck=`${parts[0]}|${parts[1]}|${parts[2]}`;
-      if(!comboSet.has(ck)){
-        comboSet.add(ck);
+    // Add trigger-only rows (have triggers but no spend)
+    for(const tk of Object.keys(combTrigMap)){
+      const parts=tk.split('|'); // date|brand|model
+      if(!comboSet.has(tk)){
+        comboSet.add(tk);
         const mo=parts[0]?new Date(parts[0]).toLocaleString('en-IN',{month:'short',year:'2-digit'}).replace(' ','-'):'';
-        comboMeta[ck]={date:parts[0],brand:parts[1],model:parts[2],month:mo,segment:segMap[ck]||''};
+        comboMeta[tk]={date:parts[0],brand:parts[1],model:parts[2],month:mo,segment:segMap[tk]||''};
       }
     }
     // Fill missing segments using brand-level fallback
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
     for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
-    // Aggregate spend/leads per buGroup (Adwords / MS-FB) for KPI columns
+    // Campaign-type rows (for hierarchical view) — built after trigMap is ready
+    _ctRows=[];
+    for(const v of Object.values(entMap)){
+      const ck=`${v.date}|${v.brand}|${v.model}`;
+      const tleads=trigMap[`${ck}|${v.bu}`]||0;
+      _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads,tleads});
+    }
+    // Aggregate spend/leads per buGroup for KPI columns
     const awMap={}, fbMap={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
@@ -703,10 +714,9 @@ async function loadData(){
       const {date,brand,model,month,segment}=comboMeta[ck];
       const aw=awMap[ck]||{spends:0,leads:0};
       const fb=fbMap[ck]||{spends:0,leads:0};
-      const at=trigMap[`${ck}|Adwords`]||0;
-      const ft=trigMap[`${ck}|MS-FB`]||0;
       const cb=combMap[ck]||{spends:0,leads:0};
-      _rows.push({date,brand,model,month,segment,awSpend:aw.spends,awLeads:aw.leads,awTrig:at,fbSpend:fb.spends,fbLeads:fb.leads,fbTrig:ft,combSpend:cb.spends,combLeads:cb.leads,combTrig:at+ft});
+      const ct=combTrigMap[ck]||0; // all sources: Adwords + MS-FB + CTWA
+      _rows.push({date,brand,model,month,segment,awSpend:aw.spends,awLeads:aw.leads,fbSpend:fb.spends,fbLeads:fb.leads,combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
     }
     populateFilters(); applyFilters(); renderDemand();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
@@ -855,7 +865,7 @@ function renderTable(){
           const cls=ct.buGroup==='Adwords'?'ct-aw':ct.buGroup==='MS-FB'?'ct-fb':'ct-other';
           h+=`<tr class="row-ct hidden" data-parent="${escH(mk)}">`;
           h+=`<td><span class="ct-tag ${cls}">${escH(ct.campaignType)}</span></td>`;
-          h+=`<td>${fmtNum(ct.spends)}</td><td>${fmtL(ct.leads)}</td><td>—</td><td>${fmtC(ct.spends,ct.leads)}</td><td>—</td></tr>`;
+          h+=`<td>${fmtNum(ct.spends)}</td><td>${fmtL(ct.leads)}</td><td>${ct.tleads>0?fmtL(ct.tleads):'—'}</td><td>${fmtC(ct.spends,ct.leads)}</td><td>${ct.tleads>0?fmtC(ct.spends,ct.tleads):'—'}</td></tr>`;
         }
       }
     }
