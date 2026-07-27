@@ -580,24 +580,39 @@ let _trigCSV=null; // cached CSV text from uploaded Excel
 async function onTriggerFileChange(evt){
   const file=evt.target.files[0];
   if(!file) return;
+  const dbg=document.getElementById('trigDebug');
+  dbg.style.display='block';
+  dbg.textContent='Reading file: '+file.name+' ('+Math.round(file.size/1024)+'KB)...';
   try{
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array',cellDates:true,dateNF:'yyyy-mm-dd'});
-    let combined='', isFirst=true;
+    let sheetInfo='Sheets found: '+wb.SheetNames.join(', ')+'\n\n';
+    let combined='', isFirst=true, usedSheet='';
     for(const sn of wb.SheetNames){
-      const csv=XLSX.utils.sheet_to_csv(wb.Sheets[sn],{dateNF:'yyyy-mm-dd'});
-      const trimmed=csv.replace(/,+(\r?\n)/g,'$1').trim();
-      if(!trimmed) continue;
-      if(isFirst){ combined=csv; isFirst=false; }
-      else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
+      const ws=wb.Sheets[sn];
+      const csv=XLSX.utils.sheet_to_csv(ws,{dateNF:'yyyy-mm-dd'});
+      const rows=parseCSV(csv);
+      sheetInfo+=`Sheet "${sn}": ${rows.length} rows`;
+      if(rows.length>0) sheetInfo+=', cols: '+Object.keys(rows[0]).slice(0,8).join(' | ');
+      sheetInfo+='\n';
+      // Only use sheets that look like trigger data (not HTML, not empty)
+      const firstLine=(csv.split('\n')[0]||'').trim();
+      if(rows.length>10 && !firstLine.startsWith('<')){
+        if(isFirst){ combined=csv; usedSheet=sn; isFirst=false; }
+        else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
+      }
     }
-    _trigCSV=combined;
-    const rows=parseCSV(combined);
-    console.log('[Triggers] file:',file.name,'sheets:',wb.SheetNames,'rows:',rows.length,'cols:',rows[0]?Object.keys(rows[0]):[]);
-    document.getElementById('trigFolderLabel').textContent=`${file.name} (${rows.length} rows)`;
+    _trigCSV=combined||null;
+    const parsedRows=combined?parseCSV(combined):[];
+    sheetInfo+=`\nUsed sheet(s): ${usedSheet||'NONE'}\nTotal rows loaded: ${parsedRows.length}`;
+    if(parsedRows.length>0) sheetInfo+='\nColumns: '+Object.keys(parsedRows[0]).join(' | ');
+    if(parsedRows.length>0) sheetInfo+='\nSample row: '+JSON.stringify(parsedRows[0]).slice(0,300);
+    dbg.textContent=sheetInfo;
+    document.getElementById('trigFolderLabel').textContent=`${file.name} (${parsedRows.length} rows)`;
     document.getElementById('trigFolderBtn').classList.add('selected');
+    if(!combined){ dbg.textContent+='\n\n⚠️ No valid trigger data found in any sheet!'; return; }
     loadData();
-  }catch(e){ console.error('[Triggers] parse error',e); alert('Failed to read Excel file: '+e.message); }
+  }catch(e){ dbg.textContent='ERROR reading file: '+e.message; }
 }
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
