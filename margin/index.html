@@ -6,6 +6,7 @@
 <title>Enterprise Daily Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <!-- Firebase SDKs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -589,13 +590,26 @@ async function readTriggerFolder(folderHandle){
   let combined='', isFirst=true;
   const entries=[];
   for await(const [name,handle] of folderHandle.entries()){
-    if(handle.kind==='file'&&name.toLowerCase().endsWith('.csv')) entries.push([name,handle]);
+    if(handle.kind==='file'&&/\.(xlsx?|csv)$/i.test(name)) entries.push([name,handle]);
   }
   entries.sort((a,b)=>a[0].localeCompare(b[0]));
-  for(const [,handle] of entries){
-    const text=await(await handle.getFile()).text();
-    if(isFirst){ combined=text; isFirst=false; }
-    else{ const lines=text.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
+  for(const [name,handle] of entries){
+    const file=await handle.getFile();
+    let sheets=[];
+    if(/\.xlsx?$/i.test(name)){
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      for(const sn of wb.SheetNames){
+        const csv=XLSX.utils.sheet_to_csv(wb.Sheets[sn]);
+        if(csv.trim()) sheets.push(csv);
+      }
+    } else {
+      sheets.push(await file.text());
+    }
+    for(const csv of sheets){
+      if(isFirst){ combined=csv; isFirst=false; }
+      else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
+    }
   }
   return combined;
 }
