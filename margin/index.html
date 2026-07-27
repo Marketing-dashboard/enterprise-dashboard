@@ -621,6 +621,12 @@ function parseCSV(text){
     return obj;
   }).filter(r=>Object.values(r).some(v=>v));
 }
+// Flexible column reader: normalises key to lowercase+no spaces/underscores before lookup
+function makeRow(rawRow){
+  const idx={};
+  for(const k of Object.keys(rawRow)) idx[k.toLowerCase().replace(/[\s_]+/g,'')]=rawRow[k];
+  return name=>idx[name.toLowerCase().replace(/[\s_]+/g,'')]||'';
+}
 const MO={'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06','Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'};
 function normalizeDate(d){
   if(!d) return '';
@@ -694,26 +700,33 @@ async function loadData(){
     _trigMap={}; const trigMap=_trigMap, segMap={};
     const combTrigMap={}; // sum of ALL sources per date|brand|model
     const parsedTrig=parseCSV(tT);
-    const hasTrigCTCol=parsedTrig.some(r=>(r['Campaign Type']||'').trim());
+    // Log actual column names to help debug mismatches
+    if(parsedTrig.length){ const cols=Object.keys(parsedTrig[0]); console.log('[Triggers] columns:',cols,'sample row:',parsedTrig[0]); }
+    const hasTrigCTCol=parsedTrig.some(r=>makeRow(r)('campaigntype'));
+    let trigMatched=0;
     for(const r of parsedTrig){
-      const date=normalizeDate(r['Date']), fb=(r['Final_Brand']||'').trim(), fm=(r['Final_Model']||'').trim();
-      let src=(r['final_source']||'').trim(); if(src==='MS_FB') src='MS-FB';
+      const g=makeRow(r);
+      const date=normalizeDate(g('Date')||g('date'));
+      const fb=(g('FinalBrand')||g('Brand')||g('brand')).trim();
+      const fm=(g('FinalModel')||g('Model')||g('model')).trim();
+      let src=(g('finalsource')||g('source')||g('Source')).trim();
+      if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
+      trigMatched++;
       const useListId=['jlr'].some(b=>fb.toLowerCase().includes(b)) ||
         (['citroen','citroën'].some(b=>fb.toLowerCase().includes(b)) && src==='MS-FB');
-      const trig=pn(r['Triggered'])+(useListId?pn(r['Triggered in List_ID']):0);
-      // Key by campaign type when column exists, else by source
-      const ct=hasTrigCTCol?(r['Campaign Type']||'').trim()||src:src;
+      const trig=pn(g('Triggered')||g('triggered'))+(useListId?pn(g('TriggeredinListID')||g('Triggered_in_List_ID')||g('triggeredinlistid')):0);
+      const ct=hasTrigCTCol?(g('CampaignType')||g('campaigntype')||src).trim()||src:src;
       const k=`${date}|${fb}|${fm}|${ct}`;
       if(!trigMap[k]) trigMap[k]=0;
       trigMap[k]+=trig;
-      // Always accumulate into combined map (all sources)
       const ck=`${date}|${fb}|${fm}`;
       if(!combTrigMap[ck]) combTrigMap[ck]=0;
       combTrigMap[ck]+=trig;
-      const seg=(r['Segment']||'').trim();
+      const seg=g('Segment')||g('segment');
       if(seg) segMap[ck]=seg;
     }
+    console.log('[Triggers] parsed:',parsedTrig.length,'matched (have date+brand+model):',trigMatched,'unique keys:',Object.keys(combTrigMap).length);
     // Pre-compute combined spend/leads across ALL campaign types per date|brand|model
     const combMap={};
     for(const v of Object.values(entMap)){
