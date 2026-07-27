@@ -218,6 +218,10 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
 .ct-tag.ct-other{background:#f1f5f9;color:#64748b}
 .hier-tfoot td{padding:9px 12px;text-align:right;font-weight:700;background:var(--surface2);border-top:2px solid var(--border);font-variant-numeric:tabular-nums}
 .hier-tfoot td:first-child{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text2)}
+.trig-folder-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.trig-folder-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.trig-folder-btn.selected{border-style:solid;border-color:#22c55e;color:#16a34a;background:#f0fdf4}
+.trig-folder-btn svg{width:15px;height:15px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -276,6 +280,10 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
     </div>
     <div class="nav-right">
       <span class="status-chip" id="statusChip">Loading…</span>
+      <button class="trig-folder-btn" id="trigFolderBtn" onclick="selectTriggerFolder()" title="Select local triggers folder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        <span id="trigFolderLabel">Select Triggers Folder</span>
+      </button>
       <button class="refresh-btn" onclick="loadData()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2.69M20 15a8 8 0 0 1-14.93 2.69"/></svg>
         Refresh
@@ -564,6 +572,33 @@ const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 
 let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[];
+let _trigFolderHandle=null;
+
+async function selectTriggerFolder(){
+  if(!window.showDirectoryPicker){ alert('Your browser does not support the File System Access API. Please use Chrome or Edge.'); return; }
+  try{
+    _trigFolderHandle=await window.showDirectoryPicker({mode:'read'});
+    const btn=document.getElementById('trigFolderBtn');
+    document.getElementById('trigFolderLabel').textContent=_trigFolderHandle.name;
+    btn.classList.add('selected');
+    loadData();
+  }catch(e){ if(e.name!=='AbortError') console.error(e); }
+}
+
+async function readTriggerFolder(folderHandle){
+  let combined='', isFirst=true;
+  const entries=[];
+  for await(const [name,handle] of folderHandle.entries()){
+    if(handle.kind==='file'&&name.toLowerCase().endsWith('.csv')) entries.push([name,handle]);
+  }
+  entries.sort((a,b)=>a[0].localeCompare(b[0]));
+  for(const [,handle] of entries){
+    const text=await(await handle.getFile()).text();
+    if(isFirst){ combined=text; isFirst=false; }
+    else{ const lines=text.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
+  }
+  return combined;
+}
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
 function parseCSVLine(line){
@@ -618,11 +653,13 @@ async function loadData(){
   document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   document.getElementById('demandContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   try{
-    const [eT,tT,dT]=await Promise.all([
+    const [eT,dT]=await Promise.all([
       fetch(ENT_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
-      fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
       fetch(DEMAND_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
     ]);
+    const tT=_trigFolderHandle
+      ? await readTriggerFolder(_trigFolderHandle)
+      : await fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text());
     // Demand
     _demandMap={};
     for(const r of parseCSV(dT)){
