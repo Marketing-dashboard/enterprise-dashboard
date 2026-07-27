@@ -595,9 +595,10 @@ async function onTriggerFileChange(evt){
       sheetInfo+=`Sheet "${sn}": ${rows.length} rows`;
       if(rows.length>0) sheetInfo+=', cols: '+Object.keys(rows[0]).join(' | ');
       sheetInfo+='\n';
-      // Only use sheets that look like trigger data (not HTML, not empty)
-      const firstLine=(csv.split('\n')[0]||'').trim();
-      if(rows.length>10 && !firstLine.startsWith('<')){
+      // Only use sheets that have a Date column (skip reference/mapping sheets)
+      const cols=rows.length>0?Object.keys(rows[0]).map(c=>c.toLowerCase()):[];
+      const hasTriggerCols=cols.some(c=>c==='date'||c==='day');
+      if(rows.length>0 && hasTriggerCols){
         if(isFirst){ combined=csv; usedSheet=sn; isFirst=false; }
         else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
       }
@@ -729,11 +730,9 @@ async function loadData(){
     for(const r of parsedTrig){
       const g=makeRow(r);
       const date=normalizeDate(g('Date')||g('date')||g('Day')||g('day'));
-      // Use Brand_Mapping / Model_Mapping as primary keys (matches Enterprise_Raw brand/model names)
-      const fb=(g('BrandMapping')||g('FinalBrand')||g('Brand')||g('brand')).trim();
-      const fm=(g('ModelMapping')||g('FinalModel')||g('Model')||g('model')).trim();
-      // Source: prefer BU Type, then final_source
-      let src=(g('BUType')||g('butype')||g('finalsource')||g('source')).trim();
+      const fb=(g('FinalBrand')||g('Final_Brand')||g('BrandMapping')||g('Brand')).trim();
+      const fm=(g('FinalModel')||g('Final_Model')||g('ModelMapping')||g('Model')).trim();
+      let src=(g('finalsource')||g('final_source')||g('BUType')||g('source')).trim();
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
       trigMatched++;
