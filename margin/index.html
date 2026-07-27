@@ -281,9 +281,9 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
     </div>
     <div class="nav-right">
       <span class="status-chip" id="statusChip">Loading…</span>
-      <button class="trig-folder-btn" id="trigFolderBtn" onclick="selectTriggerFolder()" title="Select local triggers folder">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
-        <span id="trigFolderLabel">Select Triggers Folder</span>
+      <button class="trig-folder-btn" id="trigFolderBtn" onclick="selectTriggerFile()" title="Select triggers Excel file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span id="trigFolderLabel">Upload Triggers File</span>
       </button>
       <button class="refresh-btn" onclick="loadData()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2.69M20 15a8 8 0 0 1-14.93 2.69"/></svg>
@@ -573,43 +573,32 @@ const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 
 let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[];
-let _trigFolderHandle=null;
+let _trigFileHandle=null;
 
-async function selectTriggerFolder(){
-  if(!window.showDirectoryPicker){ alert('Your browser does not support the File System Access API. Please use Chrome or Edge.'); return; }
+async function selectTriggerFile(){
+  if(!window.showOpenFilePicker){ alert('Please use Chrome or Edge for this feature.'); return; }
   try{
-    _trigFolderHandle=await window.showDirectoryPicker({mode:'read'});
-    const btn=document.getElementById('trigFolderBtn');
-    document.getElementById('trigFolderLabel').textContent=_trigFolderHandle.name;
-    btn.classList.add('selected');
+    const [handle]=await window.showOpenFilePicker({
+      types:[{description:'Excel File',accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx','.xls']}}],
+      multiple:false
+    });
+    _trigFileHandle=handle;
+    document.getElementById('trigFolderLabel').textContent=handle.name;
+    document.getElementById('trigFolderBtn').classList.add('selected');
     loadData();
   }catch(e){ if(e.name!=='AbortError') console.error(e); }
 }
 
-async function readTriggerFolder(folderHandle){
+async function readTriggerFile(fileHandle){
+  const file=await fileHandle.getFile();
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array'});
   let combined='', isFirst=true;
-  const entries=[];
-  for await(const [name,handle] of folderHandle.entries()){
-    if(handle.kind==='file'&&/\.(xlsx?|csv)$/i.test(name)) entries.push([name,handle]);
-  }
-  entries.sort((a,b)=>a[0].localeCompare(b[0]));
-  for(const [name,handle] of entries){
-    const file=await handle.getFile();
-    let sheets=[];
-    if(/\.xlsx?$/i.test(name)){
-      const buf=await file.arrayBuffer();
-      const wb=XLSX.read(buf,{type:'array'});
-      for(const sn of wb.SheetNames){
-        const csv=XLSX.utils.sheet_to_csv(wb.Sheets[sn]);
-        if(csv.trim()) sheets.push(csv);
-      }
-    } else {
-      sheets.push(await file.text());
-    }
-    for(const csv of sheets){
-      if(isFirst){ combined=csv; isFirst=false; }
-      else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
-    }
+  for(const sn of wb.SheetNames){
+    const csv=XLSX.utils.sheet_to_csv(wb.Sheets[sn]);
+    if(!csv.trim()) continue;
+    if(isFirst){ combined=csv; isFirst=false; }
+    else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
   }
   return combined;
 }
@@ -671,8 +660,8 @@ async function loadData(){
       fetch(ENT_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
       fetch(DEMAND_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
     ]);
-    const tT=_trigFolderHandle
-      ? await readTriggerFolder(_trigFolderHandle)
+    const tT=_trigFileHandle
+      ? await readTriggerFile(_trigFileHandle)
       : await fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text());
     // Demand
     _demandMap={};
