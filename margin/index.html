@@ -593,7 +593,7 @@ async function onTriggerFileChange(evt){
       const csv=XLSX.utils.sheet_to_csv(ws,{dateNF:'yyyy-mm-dd'});
       const rows=parseCSV(csv);
       sheetInfo+=`Sheet "${sn}": ${rows.length} rows`;
-      if(rows.length>0) sheetInfo+=', cols: '+Object.keys(rows[0]).slice(0,8).join(' | ');
+      if(rows.length>0) sheetInfo+=', cols: '+Object.keys(rows[0]).join(' | ');
       sheetInfo+='\n';
       // Only use sheets that look like trigger data (not HTML, not empty)
       const firstLine=(csv.split('\n')[0]||'').trim();
@@ -728,10 +728,12 @@ async function loadData(){
     let trigMatched=0;
     for(const r of parsedTrig){
       const g=makeRow(r);
-      const date=normalizeDate(g('Date')||g('date'));
-      const fb=(g('FinalBrand')||g('Brand')||g('brand')).trim();
-      const fm=(g('FinalModel')||g('Model')||g('model')).trim();
-      let src=(g('finalsource')||g('source')||g('Source')).trim();
+      const date=normalizeDate(g('Date')||g('date')||g('Day')||g('day'));
+      // Use Brand_Mapping / Model_Mapping as primary keys (matches Enterprise_Raw brand/model names)
+      const fb=(g('BrandMapping')||g('FinalBrand')||g('Brand')||g('brand')).trim();
+      const fm=(g('ModelMapping')||g('FinalModel')||g('Model')||g('model')).trim();
+      // Source: prefer BU Type, then final_source
+      let src=(g('BUType')||g('butype')||g('finalsource')||g('source')).trim();
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
       trigMatched++;
