@@ -297,7 +297,7 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
       <button class="sign-out-nav" onclick="signOutUser()">Sign out</button>
     </div>
   </nav>
-  <div id="trigDebug" style="display:none;background:#fef9c3;border-bottom:1px solid #fde047;padding:8px 20px;font-size:12px;color:#713f12;font-family:monospace;white-space:pre-wrap;line-height:1.6"></div>
+
 
   <!-- ── DAILY SECTION ── -->
   <div id="dailySection">
@@ -575,45 +575,52 @@ const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 
 let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[];
-let _trigCSV=null; // cached CSV text from uploaded Excel
+let _trigCSV=null;
+
+// ── IndexedDB helpers for trigger file persistence ──
+const _idb={
+  _db:null,
+  open(){
+    if(this._db) return Promise.resolve(this._db);
+    return new Promise((res,rej)=>{
+      const r=indexedDB.open('trigStore',1);
+      r.onupgradeneeded=e=>e.target.result.createObjectStore('kv');
+      r.onsuccess=e=>{ this._db=e.target.result; res(this._db); };
+      r.onerror=rej;
+    });
+  },
+  async put(key,val){ const db=await this.open(); return new Promise((res,rej)=>{ const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(val,key); tx.oncomplete=res; tx.onerror=rej; }); },
+  async get(key){ const db=await this.open(); return new Promise((res,rej)=>{ const tx=db.transaction('kv','readonly'); const r=tx.objectStore('kv').get(key); r.onsuccess=()=>res(r.result??null); r.onerror=rej; }); }
+};
+
+async function parseTrigBuf(buf, fileName){
+  const wb=XLSX.read(buf,{type:'array',cellDates:true,dateNF:'yyyy-mm-dd'});
+  let combined='', isFirst=true;
+  for(const sn of wb.SheetNames){
+    const csv=XLSX.utils.sheet_to_csv(wb.Sheets[sn],{dateNF:'yyyy-mm-dd'});
+    const rows=parseCSV(csv);
+    const cols=rows.length>0?Object.keys(rows[0]).map(c=>c.toLowerCase()):[];
+    if(rows.length>0&&cols.some(c=>c==='date'||c==='day')){
+      if(isFirst){ combined=csv; isFirst=false; }
+      else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
+    }
+  }
+  _trigCSV=combined||null;
+  const cnt=combined?parseCSV(combined).length:0;
+  document.getElementById('trigFolderLabel').textContent=combined?`${fileName} (${cnt} rows)`:'Upload Triggers File';
+  document.getElementById('trigFolderBtn').classList.toggle('selected',!!combined);
+}
 
 async function onTriggerFileChange(evt){
   const file=evt.target.files[0];
   if(!file) return;
-  const dbg=document.getElementById('trigDebug');
-  dbg.style.display='block';
-  dbg.textContent='Reading file: '+file.name+' ('+Math.round(file.size/1024)+'KB)...';
   try{
     const buf=await file.arrayBuffer();
-    const wb=XLSX.read(buf,{type:'array',cellDates:true,dateNF:'yyyy-mm-dd'});
-    let sheetInfo='Sheets found: '+wb.SheetNames.join(', ')+'\n\n';
-    let combined='', isFirst=true, usedSheet='';
-    for(const sn of wb.SheetNames){
-      const ws=wb.Sheets[sn];
-      const csv=XLSX.utils.sheet_to_csv(ws,{dateNF:'yyyy-mm-dd'});
-      const rows=parseCSV(csv);
-      sheetInfo+=`Sheet "${sn}": ${rows.length} rows`;
-      if(rows.length>0) sheetInfo+=', cols: '+Object.keys(rows[0]).join(' | ');
-      sheetInfo+='\n';
-      // Only use sheets that have a Date column (skip reference/mapping sheets)
-      const cols=rows.length>0?Object.keys(rows[0]).map(c=>c.toLowerCase()):[];
-      const hasTriggerCols=cols.some(c=>c==='date'||c==='day');
-      if(rows.length>0 && hasTriggerCols){
-        if(isFirst){ combined=csv; usedSheet=sn; isFirst=false; }
-        else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
-      }
-    }
-    _trigCSV=combined||null;
-    const parsedRows=combined?parseCSV(combined):[];
-    sheetInfo+=`\nUsed sheet(s): ${usedSheet||'NONE'}\nTotal rows loaded: ${parsedRows.length}`;
-    if(parsedRows.length>0) sheetInfo+='\nColumns: '+Object.keys(parsedRows[0]).join(' | ');
-    if(parsedRows.length>0) sheetInfo+='\nSample row: '+JSON.stringify(parsedRows[0]).slice(0,300);
-    dbg.textContent=sheetInfo;
-    document.getElementById('trigFolderLabel').textContent=`${file.name} (${parsedRows.length} rows)`;
-    document.getElementById('trigFolderBtn').classList.add('selected');
-    if(!combined){ dbg.textContent+='\n\n⚠️ No valid trigger data found in any sheet!'; return; }
+    await parseTrigBuf(buf,file.name);
+    await _idb.put('trigBuf',buf);
+    await _idb.put('trigName',file.name);
     loadData();
-  }catch(e){ dbg.textContent='ERROR reading file: '+e.message; }
+  }catch(e){ console.error(e); alert('Failed to read file: '+e.message); }
 }
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
@@ -685,6 +692,13 @@ async function loadData(){
   document.getElementById('statusChip').textContent='Loading…';
   document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   document.getElementById('demandContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
+  // Restore trigger file from IndexedDB if not already in memory
+  if(!_trigCSV){
+    try{
+      const buf=await _idb.get('trigBuf'), name=await _idb.get('trigName');
+      if(buf) await parseTrigBuf(buf,name||'Triggers');
+    }catch(e){ console.warn('IDB restore failed',e); }
+  }
   try{
     const [eT,dT]=await Promise.all([
       fetch(ENT_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
@@ -717,14 +731,6 @@ async function loadData(){
     _trigMap={}; const trigMap=_trigMap, segMap={};
     const combTrigMap={}; // sum of ALL sources per date|brand|model
     const parsedTrig=parseCSV(tT);
-    // Show column names + sample in UI debug panel
-    if(parsedTrig.length){
-      const cols=Object.keys(parsedTrig[0]);
-      const sample=parsedTrig[0];
-      const dbg=document.getElementById('trigDebug');
-      dbg.style.display='block';
-      dbg.textContent='COLUMNS: '+cols.join(' | ')+'\n\nSAMPLE ROW:\n'+cols.map(c=>`  ${c}: ${sample[c]}`).join('\n');
-    }
     const hasTrigCTCol=parsedTrig.some(r=>makeRow(r)('campaigntype'));
     let trigMatched=0;
     for(const r of parsedTrig){
@@ -749,8 +755,6 @@ async function loadData(){
       const seg=g('Segment')||g('segment');
       if(seg) segMap[ck]=seg;
     }
-    const dbg2=document.getElementById('trigDebug');
-    if(dbg2) dbg2.textContent+=`\n\nTotal rows: ${parsedTrig.length} | Matched (date+brand+model): ${trigMatched} | Unique combos: ${Object.keys(combTrigMap).length}\nSample trigMap keys: ${Object.keys(trigMap).slice(0,3).join(' , ')}\nSample combMap keys: ${Object.keys(combTrigMap).slice(0,3).join(' , ')}`;
     // Pre-compute combined spend/leads across ALL campaign types per date|brand|model
     const combMap={};
     for(const v of Object.values(entMap)){
@@ -943,13 +947,13 @@ function renderTable(){
         const hasCT=cts.length>0;
         h+=`<tr class="row-model hidden" data-parent="${escH(bk)}" data-key="${escH(mk)}" style="cursor:${hasCT?'pointer':'default'}">`;
         h+=`<td>${hasCT?`<span class="expand-icon">▶</span>`:'<span class="expand-icon" style="opacity:0">·</span>'}${escH(r.model)}</td>`;
-        h+=`<td>${fmtNum(r.combSpend)}</td><td>${fmtL(r.combLeads)}</td><td>${fmtL(r.combTrig)}</td><td>${fmtC(r.combSpend,r.combLeads)}</td><td>${fmtC(r.combSpend,r.combTrig)}</td></tr>`;
+        h+=`<td>${fmtNum(r.combSpend)}</td><td>${fmtL(r.combLeads)}</td><td>${r.combTrig>0?fmtL(r.combTrig):''}</td><td>${fmtC(r.combSpend,r.combLeads)}</td><td>${r.combTrig>0?fmtC(r.combSpend,r.combTrig):''}</td></tr>`;
 
         for(const ct of cts){
           const cls=ct.buGroup==='Adwords'?'ct-aw':ct.buGroup==='MS-FB'?'ct-fb':'ct-other';
           h+=`<tr class="row-ct hidden" data-parent="${escH(mk)}">`;
           h+=`<td><span class="ct-tag ${cls}">${escH(ct.campaignType)}</span></td>`;
-          h+=`<td>${fmtNum(ct.spends)}</td><td>${fmtL(ct.leads)}</td><td>${ct.tleads>0?fmtL(ct.tleads):'—'}</td><td>${fmtC(ct.spends,ct.leads)}</td><td>${ct.tleads>0?fmtC(ct.spends,ct.tleads):'—'}</td></tr>`;
+          h+=`<td>${fmtNum(ct.spends)}</td><td>${fmtL(ct.leads)}</td><td>${ct.tleads>0?fmtL(ct.tleads):''}</td><td>${fmtC(ct.spends,ct.leads)}</td><td>${ct.tleads>0?fmtC(ct.spends,ct.tleads):''}</td></tr>`;
         }
       }
     }
