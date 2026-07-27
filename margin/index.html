@@ -592,14 +592,18 @@ async function selectTriggerFile(){
 async function readTriggerFile(fileHandle){
   const file=await fileHandle.getFile();
   const buf=await file.arrayBuffer();
-  const wb=XLSX.read(buf,{type:'array'});
+  const wb=XLSX.read(buf,{type:'array',cellDates:true,dateNF:'yyyy-mm-dd'});
   let combined='', isFirst=true;
   for(const sn of wb.SheetNames){
-    const csv=XLSX.utils.sheet_to_csv(wb.Sheets[sn]);
-    if(!csv.trim()) continue;
+    const ws=wb.Sheets[sn];
+    const csv=XLSX.utils.sheet_to_csv(ws,{dateNF:'yyyy-mm-dd'});
+    if(!csv.trim()||csv.trim()===','.repeat(10)) continue;
     if(isFirst){ combined=csv; isFirst=false; }
     else{ const lines=csv.split('\n'); combined+='\n'+lines.slice(1).join('\n'); }
   }
+  // Debug: log first 3 parsed rows to console
+  const rows=parseCSV(combined);
+  console.log('[Triggers] sheets:',wb.SheetNames,'rows:',rows.length,'sample:',rows.slice(0,3));
   return combined;
 }
 
