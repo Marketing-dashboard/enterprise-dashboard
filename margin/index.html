@@ -23,6 +23,7 @@
   --accent:#4f6ef7;
   --aw:#2563eb;--aw-bg:#eff6ff;--aw-border:#bfdbfe;
   --fb:#f97316;--fb-bg:#fff7ed;--fb-border:#fed7aa;
+  --ctwa:#7c3aed;--ctwa-bg:#f5f3ff;--ctwa-border:#ddd6fe;
   --comb:#16a34a;--comb-bg:#f0fdf4;--comb-border:#bbf7d0;
   --radius:10px;
   --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 12px rgba(0,0,0,.04);
@@ -136,12 +137,16 @@ thead tr.col-row th.th-fixed{background:var(--surface);border-right:1px solid va
 thead tr.group-row th.th-aw{background:var(--aw-bg);color:var(--aw);border-left:2px solid var(--aw-border);border-right:2px solid var(--aw-border)}
 thead tr.group-row th.th-fb{background:var(--fb-bg);color:var(--fb);border-left:2px solid var(--fb-border);border-right:2px solid var(--fb-border)}
 thead tr.group-row th.th-comb{background:var(--comb-bg);color:var(--comb);border-left:2px solid var(--comb-border);border-right:2px solid var(--comb-border)}
+thead tr.group-row th.th-ctwa{background:var(--ctwa-bg);color:var(--ctwa);border-left:2px solid var(--ctwa-border);border-right:2px solid var(--ctwa-border)}
 thead tr.col-row th.aw{background:var(--aw-bg);border-left:1px solid var(--aw-border);border-right:1px solid var(--aw-border)}
 thead tr.col-row th.aw-first{border-left:2px solid var(--aw-border)}
 thead tr.col-row th.aw-last{border-right:2px solid var(--aw-border)}
 thead tr.col-row th.fb{background:var(--fb-bg);border-left:1px solid var(--fb-border);border-right:1px solid var(--fb-border)}
 thead tr.col-row th.fb-first{border-left:2px solid var(--fb-border)}
 thead tr.col-row th.fb-last{border-right:2px solid var(--fb-border)}
+thead tr.col-row th.ctwa{background:var(--ctwa-bg);border-left:1px solid var(--ctwa-border);border-right:1px solid var(--ctwa-border)}
+thead tr.col-row th.ctwa-first{border-left:2px solid var(--ctwa-border)}
+thead tr.col-row th.ctwa-last{border-right:2px solid var(--ctwa-border)}
 thead tr.col-row th.comb{background:var(--comb-bg);border-left:1px solid var(--comb-border);border-right:1px solid var(--comb-border)}
 thead tr.col-row th.comb-first{border-left:2px solid var(--comb-border)}
 thead tr.col-row th.comb-last{border-right:2px solid var(--comb-border)}
@@ -151,10 +156,16 @@ tbody td{padding:8px 10px;vertical-align:middle}
 tbody td.td-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 tbody td.aw{background:rgba(239,246,255,.4)}
 tbody td.fb{background:rgba(255,247,237,.4)}
+tbody td.ctwa{background:rgba(245,243,255,.4)}
 tbody td.comb{background:rgba(240,253,244,.4)}
 tbody tr:hover td.aw{background:rgba(239,246,255,.8)}
 tbody tr:hover td.fb{background:rgba(255,247,237,.8)}
+tbody tr:hover td.ctwa{background:rgba(245,243,255,.8)}
 tbody tr:hover td.comb{background:rgba(240,253,244,.8)}
+tfoot td.aw{background:var(--aw-bg)}
+tfoot td.fb{background:var(--fb-bg)}
+tfoot td.ctwa{background:var(--ctwa-bg)}
+tfoot td.comb{background:var(--comb-bg)}
 tfoot tr{background:var(--surface2);border-top:2px solid var(--border)}
 tfoot td{padding:9px 10px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 tfoot td.left{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text2)}
@@ -275,8 +286,9 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
         <span class="nav-badge">FY26-27</span>
       </div>
       <div class="nav-tabs">
-        <button class="nav-tab active" id="tab-daily"  onclick="switchTab('daily')">Daily Performance</button>
-        <button class="nav-tab"        id="tab-demand" onclick="switchTab('demand')">Demand vs Delivery</button>
+        <button class="nav-tab active" id="tab-daily"    onclick="switchTab('daily')">Daily Performance</button>
+        <button class="nav-tab"        id="tab-campaign" onclick="switchTab('campaign')">Campaign Analysis</button>
+        <button class="nav-tab"        id="tab-demand"   onclick="switchTab('demand')">Demand vs Delivery</button>
       </div>
     </div>
     <div class="nav-right">
@@ -342,6 +354,23 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
           <span class="row-count" id="rowCount"></span>
         </div>
         <div id="tableContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAMPAIGN ANALYSIS SECTION ── -->
+  <div id="campaignSection" style="display:none">
+    <div class="filters">
+      <div class="filter-group"><label>Month</label><select id="c-month" onchange="renderCampaign()"><option value="">All Months</option></select></div>
+      <div class="filter-group"><label>Brand</label><select id="c-brand" onchange="renderCampaign()"><option value="">All Brands</option></select></div>
+      <div class="filter-group"><label>Segment</label><select id="c-segment" onchange="renderCampaign()"><option value="">All Segments</option></select></div>
+      <div class="filter-group"><label>Model</label><select id="c-model" onchange="renderCampaign()"><option value="">All Models</option></select></div>
+      <button class="reset-btn" onclick="resetCampaignFilters()">Reset</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-card">
+        <div class="table-header-bar"><span class="table-title">Campaign Type Analysis</span><span class="row-count" id="campRowCount"></span></div>
+        <div id="campaignContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
       </div>
     </div>
   </div>
@@ -790,23 +819,35 @@ async function loadData(){
       const tleads=trigMap[`${ck}|${v.bu}`]||0;
       _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads,tleads});
     }
-    // Aggregate spend/leads per buGroup for KPI columns
-    const awMap={}, fbMap={};
+    // Aggregate spend/leads per channel (Adwords / MS-FB / CTWA)
+    const awMap={}, fbMap={}, ctwaMap={};
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand}|${v.model}`;
+      const buL=v.bu.toLowerCase();
       if(v.buGroup==='Adwords'){ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
+      else if(buL==='ctwa'||buL==='ctwa (meta)'){ if(!ctwaMap[ck]) ctwaMap[ck]={spends:0,leads:0}; ctwaMap[ck].spends+=v.spends; ctwaMap[ck].leads+=v.leads; }
       else if(v.buGroup==='MS-FB'){ if(!fbMap[ck]) fbMap[ck]={spends:0,leads:0}; fbMap[ck].spends+=v.spends; fbMap[ck].leads+=v.leads; }
+    }
+    // Per-channel trigger maps
+    const awTrigMap={}, fbTrigMap={}, ctwaTrigMap={};
+    for(const [k,v] of Object.entries(trigMap)){
+      const parts=k.split('|'), ck=`${parts[0]}|${parts[1]}|${parts[2]}`, ct=(parts[3]||'').toLowerCase();
+      if(ct==='ms-fb') fbTrigMap[ck]=(fbTrigMap[ck]||0)+v;
+      else if(ct==='ctwa') ctwaTrigMap[ck]=(ctwaTrigMap[ck]||0)+v;
+      else awTrigMap[ck]=(awTrigMap[ck]||0)+v;
     }
     _rows=[];
     for(const ck of [...comboSet].sort()){
       const {date,brand,model,month,segment}=comboMeta[ck];
-      const aw=awMap[ck]||{spends:0,leads:0};
-      const fb=fbMap[ck]||{spends:0,leads:0};
-      const cb=combMap[ck]||{spends:0,leads:0};
-      const ct=combTrigMap[ck]||0; // all sources: Adwords + MS-FB + CTWA
-      _rows.push({date,brand,model,month,segment,awSpend:aw.spends,awLeads:aw.leads,fbSpend:fb.spends,fbLeads:fb.leads,combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
+      const aw=awMap[ck]||{spends:0,leads:0}, fb=fbMap[ck]||{spends:0,leads:0}, ctwa=ctwaMap[ck]||{spends:0,leads:0};
+      const cb=combMap[ck]||{spends:0,leads:0}, ct=combTrigMap[ck]||0;
+      _rows.push({date,brand,model,month,segment,
+        awSpend:aw.spends,awLeads:aw.leads,awTrig:awTrigMap[ck]||0,
+        fbSpend:fb.spends,fbLeads:fb.leads,fbTrig:fbTrigMap[ck]||0,
+        ctwaSpend:ctwa.spends,ctwaLeads:ctwa.leads,ctwaTrig:ctwaTrigMap[ck]||0,
+        combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
     }
-    populateFilters(); applyFilters(); renderDemand();
+    populateFilters(); applyFilters(); populateCampaignFilters(); renderCampaign(); renderDemand();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('statusChip').textContent=`${_rows.length} rows · ${ts}`;
   }catch(e){
@@ -819,9 +860,11 @@ async function loadData(){
 }
 
 function switchTab(tab){
-  document.getElementById('dailySection').style.display =tab==='daily' ?'block':'none';
-  document.getElementById('demandSection').style.display=tab==='demand'?'block':'none';
+  document.getElementById('dailySection').style.display   =tab==='daily'   ?'block':'none';
+  document.getElementById('campaignSection').style.display=tab==='campaign'?'block':'none';
+  document.getElementById('demandSection').style.display  =tab==='demand'  ?'block':'none';
   document.getElementById('tab-daily').classList.toggle('active',tab==='daily');
+  document.getElementById('tab-campaign').classList.toggle('active',tab==='campaign');
   document.getElementById('tab-demand').classList.toggle('active',tab==='demand');
 }
 
@@ -884,111 +927,117 @@ function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function renderTable(){
   document.getElementById('rowCount').textContent=`${_filtered.length} rows`;
   if(!_filtered.length){ document.getElementById('tableContainer').innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
-
-  // Build CT lookup keyed by date|brand|model (only for filtered brands/models/dates)
-  const filtSet=new Set(_filtered.map(r=>`${r.date}|${r.brand}|${r.model}`));
-  const ctByKey={};
-  for(const c of _ctRows){
-    const k=`${c.date}|${c.brand}|${c.model}`;
-    if(!filtSet.has(k)) continue;
-    if(!ctByKey[k]) ctByKey[k]=[];
-    ctByKey[k].push(c);
-  }
-
-  // Sort: date desc, brand asc, model asc
   const sorted=[..._filtered].sort((a,b)=>{
     const dd=b.date.localeCompare(a.date); if(dd) return dd;
     const db=a.brand.localeCompare(b.brand); if(db) return db;
     return a.model.localeCompare(b.model);
   });
-
-  // Pre-group by date → brand → [model rows]
-  const dateOrder=[], dateMap={};
+  let h='<table><thead>';
+  h+='<tr class="group-row"><th class="th-fixed left" colspan="3"></th>';
+  h+='<th class="th-aw" colspan="5">📊 Adwords</th>';
+  h+='<th class="th-fb" colspan="5">📱 MS-FB</th>';
+  h+='<th class="th-ctwa" colspan="5">💬 CTWA</th>';
+  h+='<th class="th-comb" colspan="5">🔗 Combined</th></tr>';
+  h+='<tr class="col-row"><th class="th-fixed left">Date</th><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
+  ['aw','fb','ctwa','comb'].forEach(cls=>{
+    h+=`<th class="${cls} ${cls}-first">Spends</th><th class="${cls}">Leads</th><th class="${cls}">TLeads</th><th class="${cls}">CPL</th><th class="${cls} ${cls}-last">TCPL</th>`;
+  });
+  h+='</tr></thead><tbody>';
+  const tot={awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0};
   for(const r of sorted){
-    if(!dateMap[r.date]){ dateMap[r.date]={}; dateOrder.push(r.date); }
-    if(!dateMap[r.date][r.brand]) dateMap[r.date][r.brand]=[];
-    dateMap[r.date][r.brand].push(r);
+    tot.awS+=r.awSpend;tot.awL+=r.awLeads;tot.awT+=r.awTrig;
+    tot.fbS+=r.fbSpend;tot.fbL+=r.fbLeads;tot.fbT+=r.fbTrig;
+    tot.ctwaS+=r.ctwaSpend;tot.ctwaL+=r.ctwaLeads;tot.ctwaT+=r.ctwaTrig;
+    tot.cS+=r.combSpend;tot.cL+=r.combLeads;tot.cT+=r.combTrig;
+    h+=`<tr><td style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td><td style="font-weight:600">${escH(r.brand)}</td><td>${escH(r.model)}</td>`;
+    h+=`<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtL(r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtL(r.awTrig):''}</td><td class="td-num aw">${fmtC(r.awSpend,r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtC(r.awSpend,r.awTrig):''}</td>`;
+    h+=`<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtL(r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtL(r.fbTrig):''}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtC(r.fbSpend,r.fbTrig):''}</td>`;
+    h+=`<td class="td-num ctwa">${fmtNum(r.ctwaSpend)}</td><td class="td-num ctwa">${fmtL(r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtL(r.ctwaTrig):''}</td><td class="td-num ctwa">${fmtC(r.ctwaSpend,r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtC(r.ctwaSpend,r.ctwaTrig):''}</td>`;
+    h+=`<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtL(r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtL(r.combTrig):''}</td><td class="td-num comb">${fmtC(r.combSpend,r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtC(r.combSpend,r.combTrig):''}</td></tr>`;
   }
+  h+='</tbody><tfoot><tr><td class="left" colspan="3">TOTAL</td>';
+  h+=`<td class="aw">${fmtNum(tot.awS)}</td><td class="aw">${fmtL(tot.awL)}</td><td class="aw">${fmtL(tot.awT)}</td><td class="aw">${fmtC(tot.awS,tot.awL)}</td><td class="aw">${fmtC(tot.awS,tot.awT)}</td>`;
+  h+=`<td class="fb">${fmtNum(tot.fbS)}</td><td class="fb">${fmtL(tot.fbL)}</td><td class="fb">${fmtL(tot.fbT)}</td><td class="fb">${fmtC(tot.fbS,tot.fbL)}</td><td class="fb">${fmtC(tot.fbS,tot.fbT)}</td>`;
+  h+=`<td class="ctwa">${fmtNum(tot.ctwaS)}</td><td class="ctwa">${fmtL(tot.ctwaL)}</td><td class="ctwa">${fmtL(tot.ctwaT)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaL)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaT)}</td>`;
+  h+=`<td class="comb">${fmtNum(tot.cS)}</td><td class="comb">${fmtL(tot.cL)}</td><td class="comb">${fmtL(tot.cT)}</td><td class="comb">${fmtC(tot.cS,tot.cL)}</td><td class="comb">${fmtC(tot.cS,tot.cT)}</td>`;
+  h+='</tr></tfoot></table>';
+  document.getElementById('tableContainer').innerHTML=h;
+}
 
-  // Aggregate date totals and brand totals
-  const dateAgg={}, brandAgg={};
-  for(const r of _filtered){
-    if(!dateAgg[r.date]) dateAgg[r.date]={s:0,l:0,t:0};
-    dateAgg[r.date].s+=r.combSpend; dateAgg[r.date].l+=r.combLeads; dateAgg[r.date].t+=r.combTrig;
-    const bk=`${r.date}|${r.brand}`;
-    if(!brandAgg[bk]) brandAgg[bk]={s:0,l:0,t:0};
-    brandAgg[bk].s+=r.combSpend; brandAgg[bk].l+=r.combLeads; brandAgg[bk].t+=r.combTrig;
+// ── CAMPAIGN ANALYSIS TAB ──
+function populateCampaignFilters(){
+  const months=[...new Set(_ctRows.map(r=>r.month))].filter(Boolean).sort();
+  const brands=[...new Set(_ctRows.map(r=>r.brand))].filter(Boolean).sort();
+  const segments=[...new Set(_ctRows.map(r=>r.segment))].filter(Boolean).sort();
+  const models=[...new Set(_ctRows.map(r=>r.model))].filter(Boolean).sort();
+  const s=(id,opts,placeholder)=>{ const el=document.getElementById(id),cur=el.value; el.innerHTML=`<option value="">${placeholder}</option>`+opts.map(o=>`<option value="${escH(o)}">${escH(o)}</option>`).join(''); if(cur) el.value=cur; };
+  s('c-month',months,'All Months'); s('c-brand',brands,'All Brands'); s('c-segment',segments,'All Segments'); s('c-model',models,'All Models');
+}
+function resetCampaignFilters(){ ['c-month','c-brand','c-segment','c-model'].forEach(id=>document.getElementById(id).value=''); renderCampaign(); }
+function renderCampaign(){
+  const cont=document.getElementById('campaignContainer');
+  if(!_ctRows.length){ cont.innerHTML='<div class="empty">No data loaded.</div>'; return; }
+  const month=document.getElementById('c-month').value, brand=document.getElementById('c-brand').value;
+  const segment=document.getElementById('c-segment').value, model=document.getElementById('c-model').value;
+  const filtered=_ctRows.filter(r=>{
+    if(month&&r.month!==month) return false;
+    if(brand&&r.brand!==brand) return false;
+    if(segment&&r.segment!==segment) return false;
+    if(model&&r.model!==model) return false;
+    return true;
+  });
+  // Aggregate by brand|model|campaignType
+  const agg={}, brandOrder=[], modelOrder={}, bmOrder={};
+  for(const r of filtered){
+    const bk=r.brand, mk=`${r.brand}|${r.model}`, ck=`${r.brand}|${r.model}|${r.campaignType}`;
+    if(!agg[ck]){ agg[ck]={brand:r.brand,model:r.model,ct:r.campaignType,buGroup:r.buGroup,s:0,l:0,t:0}; }
+    agg[ck].s+=r.spends; agg[ck].l+=r.leads; agg[ck].t+=r.tleads;
+    if(!brandOrder.includes(bk)) brandOrder.push(bk);
+    if(!modelOrder[bk]) modelOrder[bk]=[];
+    if(!modelOrder[bk].includes(r.model)) modelOrder[bk].push(r.model);
+    if(!bmOrder[mk]) bmOrder[mk]=[];
+    if(!bmOrder[mk].includes(r.campaignType)) bmOrder[mk].push(r.campaignType);
   }
-
-  let h='<table class="hier-table"><thead><tr>';
-  h+='<th style="text-align:left">Date / Brand / Model / Campaign Type</th>';
-  h+='<th>Spends</th><th>Leads</th><th>TLeads</th><th>CPL</th><th>TCPL</th></tr></thead><tbody>';
-
+  brandOrder.sort(); for(const b of brandOrder){ modelOrder[b]&&modelOrder[b].sort(); }
+  // Brand/model totals
+  const brandTot={}, modelTot={};
+  for(const v of Object.values(agg)){
+    const bk=v.brand, mk=`${v.brand}|${v.model}`;
+    if(!brandTot[bk]) brandTot[bk]={s:0,l:0,t:0};
+    brandTot[bk].s+=v.s; brandTot[bk].l+=v.l; brandTot[bk].t+=v.t;
+    if(!modelTot[mk]) modelTot[mk]={s:0,l:0,t:0};
+    modelTot[mk].s+=v.s; modelTot[mk].l+=v.l; modelTot[mk].t+=v.t;
+  }
   let totS=0,totL=0,totT=0;
-
-  for(const date of dateOrder){
-    const da=dateAgg[date];
-    totS+=da.s; totL+=da.l; totT+=da.t;
-    h+=`<tr class="row-date" data-key="${escH(date)}" style="cursor:pointer">`;
-    h+=`<td><span class="expand-icon">▼</span>${fmtDate(date)}</td>`;
-    h+=`<td>${fmtNum(da.s)}</td><td>${fmtL(da.l)}</td><td>${fmtL(da.t)}</td><td>${fmtC(da.s,da.l)}</td><td>${fmtC(da.s,da.t)}</td></tr>`;
-
-    const brands=Object.keys(dateMap[date]).sort();
-    for(const brand of brands){
-      const bk=`${date}|${brand}`;
-      const ba=brandAgg[bk];
-      h+=`<tr class="row-brand" data-parent="${escH(date)}" data-key="${escH(bk)}" style="cursor:pointer">`;
-      h+=`<td><span class="expand-icon">▶</span>${escH(brand)}</td>`;
-      h+=`<td>${fmtNum(ba.s)}</td><td>${fmtL(ba.l)}</td><td>${fmtL(ba.t)}</td><td>${fmtC(ba.s,ba.l)}</td><td>${fmtC(ba.s,ba.t)}</td></tr>`;
-
-      for(const r of dateMap[date][brand]){
-        const mk=`${date}|${brand}|${r.model}`;
-        const cts=(ctByKey[mk]||[]).sort((a,b)=>a.campaignType.localeCompare(b.campaignType));
-        const hasCT=cts.length>0;
-        h+=`<tr class="row-model hidden" data-parent="${escH(bk)}" data-key="${escH(mk)}" style="cursor:${hasCT?'pointer':'default'}">`;
-        h+=`<td>${hasCT?`<span class="expand-icon">▶</span>`:'<span class="expand-icon" style="opacity:0">·</span>'}${escH(r.model)}</td>`;
-        h+=`<td>${fmtNum(r.combSpend)}</td><td>${fmtL(r.combLeads)}</td><td>${r.combTrig>0?fmtL(r.combTrig):''}</td><td>${fmtC(r.combSpend,r.combLeads)}</td><td>${r.combTrig>0?fmtC(r.combSpend,r.combTrig):''}</td></tr>`;
-
-        for(const ct of cts){
-          const cls=ct.buGroup==='Adwords'?'ct-aw':ct.buGroup==='MS-FB'?'ct-fb':'ct-other';
-          h+=`<tr class="row-ct hidden" data-parent="${escH(mk)}">`;
-          h+=`<td><span class="ct-tag ${cls}">${escH(ct.campaignType)}</span></td>`;
-          h+=`<td>${fmtNum(ct.spends)}</td><td>${fmtL(ct.leads)}</td><td>${ct.tleads>0?fmtL(ct.tleads):''}</td><td>${fmtC(ct.spends,ct.leads)}</td><td>${ct.tleads>0?fmtC(ct.spends,ct.tleads):''}</td></tr>`;
-        }
+  let h='<table class="hier-table"><thead><tr><th style="text-align:left">Brand / Model / Campaign Type</th><th>Spends</th><th>Leads</th><th>TLeads</th><th>CPL</th><th>TCPL</th></tr></thead><tbody>';
+  for(const brand of brandOrder){
+    const bt=brandTot[brand]||{s:0,l:0,t:0};
+    totS+=bt.s; totL+=bt.l; totT+=bt.t;
+    h+=`<tr class="row-date" data-key="b|${escH(brand)}" style="cursor:pointer"><td><span class="expand-icon">▼</span>${escH(brand)}</td><td>${fmtNum(bt.s)}</td><td>${fmtL(bt.l)}</td><td>${bt.t>0?fmtL(bt.t):''}</td><td>${fmtC(bt.s,bt.l)}</td><td>${bt.t>0?fmtC(bt.s,bt.t):''}</td></tr>`;
+    for(const model of (modelOrder[brand]||[])){
+      const mk=`${brand}|${model}`, mt=modelTot[mk]||{s:0,l:0,t:0};
+      const cts=(bmOrder[mk]||[]).sort();
+      h+=`<tr class="row-brand" data-parent="b|${escH(brand)}" data-key="m|${escH(mk)}" style="cursor:pointer"><td><span class="expand-icon">▶</span>${escH(model)}</td><td>${fmtNum(mt.s)}</td><td>${fmtL(mt.l)}</td><td>${mt.t>0?fmtL(mt.t):''}</td><td>${fmtC(mt.s,mt.l)}</td><td>${mt.t>0?fmtC(mt.s,mt.t):''}</td></tr>`;
+      for(const ct of cts){
+        const v=agg[`${mk}|${ct}`]||{s:0,l:0,t:0,buGroup:''};
+        const cls=v.buGroup==='Adwords'?'ct-aw':v.buGroup==='MS-FB'?'ct-fb':'ct-other';
+        h+=`<tr class="row-model hidden" data-parent="m|${escH(mk)}"><td><span class="expand-icon" style="opacity:0">·</span><span class="ct-tag ${cls}">${escH(ct)}</span></td><td>${fmtNum(v.s)}</td><td>${fmtL(v.l)}</td><td>${v.t>0?fmtL(v.t):''}</td><td>${fmtC(v.s,v.l)}</td><td>${v.t>0?fmtC(v.s,v.t):''}</td></tr>`;
       }
     }
   }
-
-  h+=`</tbody><tfoot><tr class="hier-tfoot"><td>TOTAL</td>`;
-  h+=`<td>${fmtNum(totS)}</td><td>${fmtL(totL)}</td><td>${fmtL(totT)}</td><td>${fmtC(totS,totL)}</td><td>${fmtC(totS,totT)}</td></tr></tfoot></table>`;
-  const tc=document.getElementById('tableContainer');
-  tc.innerHTML=h;
-  tc.onclick=e=>{
-    const tr=e.target.closest('tr[data-key]');
-    if(tr) toggleRow(tr.dataset.key);
-  };
+  h+=`</tbody><tfoot><tr class="hier-tfoot"><td>TOTAL</td><td>${fmtNum(totS)}</td><td>${fmtL(totL)}</td><td>${totT>0?fmtL(totT):''}</td><td>${fmtC(totS,totL)}</td><td>${totT>0?fmtC(totS,totT):''}</td></tr></tfoot></table>`;
+  cont.innerHTML=h;
+  document.getElementById('campRowCount').textContent=`${Object.keys(agg).length} campaign types`;
+  cont.onclick=e=>{ const tr=e.target.closest('tr[data-key]'); if(tr) toggleCampRow(tr.dataset.key); };
 }
-
-function toggleRow(key){
-  const allRows=[...document.querySelectorAll('#tableContainer tr')];
-  const children=allRows.filter(tr=>tr.dataset.parent===key);
+function toggleCampRow(key){
+  const rows=[...document.querySelectorAll('#campaignContainer tr')];
+  const children=rows.filter(r=>r.dataset.parent===key);
   if(!children.length) return;
-  const expanding=children[0].classList.contains('hidden');
-  children.forEach(c=>{
-    if(expanding){ c.classList.remove('hidden'); }
-    else{ c.classList.add('hidden'); if(c.dataset.key) collapseChildren(c.dataset.key); }
-  });
-  const parentRow=allRows.find(tr=>tr.dataset.key===key);
-  if(parentRow){ const ic=parentRow.querySelector('.expand-icon'); if(ic) ic.textContent=expanding?'▼':'▶'; }
-}
-function collapseChildren(key){
-  const allRows=[...document.querySelectorAll('#tableContainer tr')];
-  allRows.filter(tr=>tr.dataset.parent===key).forEach(c=>{
-    c.classList.add('hidden');
-    if(c.dataset.key) collapseChildren(c.dataset.key);
-  });
-  const parentRow=allRows.find(tr=>tr.dataset.key===key);
-  if(parentRow){ const ic=parentRow.querySelector('.expand-icon'); if(ic) ic.textContent='▶'; }
+  const exp=children[0].classList.contains('hidden');
+  children.forEach(c=>{ exp?c.classList.remove('hidden'):c.classList.add('hidden'); });
+  const p=rows.find(r=>r.dataset.key===key);
+  if(p){ const ic=p.querySelector('.expand-icon'); if(ic) ic.textContent=exp?'▼':'▶'; }
 }
 
 function renderDemand(){
