@@ -737,14 +737,14 @@ async function loadData(){
       const date=normalizeDate(g('Date')||g('date')||g('Day')||g('day'));
       const rawBrand=(g('brand')||g('Brand')||'').trim();
       const rawModel=(g('model')||g('Model')||'').trim();
-      // Use Final_Brand/Final_Model if present (local Excel), else apply Reference mapping
-      let fb=(g('FinalBrand')||g('Final_Brand')||g('BrandMapping')||'').trim();
-      let fm=(g('FinalModel')||g('Final_Model')||g('ModelMapping')||'').trim();
+      // Priority: Brand_Mapped/Model_Mapped (gsheet columns) → Final_Brand/Model → refMap → raw
+      let fb=(g('brandmapped')||g('BrandMapped')||g('FinalBrand')||g('Final_Brand')||g('BrandMapping')||'').trim();
+      let fm=(g('modelmapped')||g('ModelMapped')||g('FinalModel')||g('Final_Model')||g('ModelMapping')||'').trim();
       if(!fb||!fm){
         const refKey=`${rawBrand.toLowerCase()}|${rawModel.toLowerCase()}`;
         const ref=refMap[refKey];
-        fb=ref?ref.bm:rawBrand;
-        fm=ref?ref.mm:rawModel;
+        fb=fb||(ref?ref.bm:rawBrand);
+        fm=fm||(ref?ref.mm:rawModel);
       }
       let src=(g('finalsource')||g('final_source')||g('BUType')||g('source')).trim();
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
@@ -806,7 +806,7 @@ async function loadData(){
       const ck=`${v.date}|${v.brand}|${v.model}`;
       const buL=v.bu.toLowerCase();
       if(v.buGroup==='Adwords'){ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
-      else if(buL==='ctwa'||buL==='ctwa (meta)'){ if(!ctwaMap[ck]) ctwaMap[ck]={spends:0,leads:0}; ctwaMap[ck].spends+=v.spends; ctwaMap[ck].leads+=v.leads; }
+      else if(buL==='ctwa'||buL==='ctwa (meta)'||buL.includes('whatsapp')){ if(!ctwaMap[ck]) ctwaMap[ck]={spends:0,leads:0}; ctwaMap[ck].spends+=v.spends; ctwaMap[ck].leads+=v.leads; }
       else if(v.buGroup==='MS-FB'){ if(!fbMap[ck]) fbMap[ck]={spends:0,leads:0}; fbMap[ck].spends+=v.spends; fbMap[ck].leads+=v.leads; }
     }
     // Per-channel trigger maps
