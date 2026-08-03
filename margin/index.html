@@ -600,8 +600,9 @@ async function revokeUser(email) {
 //  DASHBOARD DATA
 // ══════════════════════════════════════════
 const ENT_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=1372441356';
-const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
+const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=942825587';
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
+const REF_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
 
 let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[];
 let _trigCSV=null;
@@ -729,10 +730,18 @@ async function loadData(){
     }catch(e){ console.warn('IDB restore failed',e); }
   }
   try{
-    const [eT,dT]=await Promise.all([
+    const [eT,dT,refT]=await Promise.all([
       fetch(ENT_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
       fetch(DEMAND_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
+      fetch(REF_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
     ]);
+    // Build brand/model reference mapping
+    const refMap={};
+    for(const r of parseCSV(refT)){
+      const brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
+      const bm=(r['Brand_Mapping']||'').trim(), mm=(r['Model_Mapping']||'').trim();
+      if(brand&&model) refMap[`${brand.toLowerCase()}|${model.toLowerCase()}`]={bm:bm||brand,mm:mm||model};
+    }
     const tT=_trigCSV
       ? _trigCSV
       : await fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text());
@@ -765,8 +774,17 @@ async function loadData(){
     for(const r of parsedTrig){
       const g=makeRow(r);
       const date=normalizeDate(g('Date')||g('date')||g('Day')||g('day'));
-      const fb=(g('FinalBrand')||g('Final_Brand')||g('BrandMapping')||g('Brand')).trim();
-      const fm=(g('FinalModel')||g('Final_Model')||g('ModelMapping')||g('Model')).trim();
+      const rawBrand=(g('brand')||g('Brand')||'').trim();
+      const rawModel=(g('model')||g('Model')||'').trim();
+      // Use Final_Brand/Final_Model if present (local Excel), else apply Reference mapping
+      let fb=(g('FinalBrand')||g('Final_Brand')||g('BrandMapping')||'').trim();
+      let fm=(g('FinalModel')||g('Final_Model')||g('ModelMapping')||'').trim();
+      if(!fb||!fm){
+        const refKey=`${rawBrand.toLowerCase()}|${rawModel.toLowerCase()}`;
+        const ref=refMap[refKey];
+        fb=ref?ref.bm:rawBrand;
+        fm=ref?ref.mm:rawModel;
+      }
       let src=(g('finalsource')||g('final_source')||g('BUType')||g('source')).trim();
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
