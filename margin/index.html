@@ -121,8 +121,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
 
 /* TABLE */
-.table-wrap{padding:0 20px 20px;overflow-x:auto}
-.table-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.table-wrap{padding:0 20px 20px}
+.table-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow-x:auto}
+/* Sticky fixed columns */
+th.s0,td.s0{position:sticky;left:0;z-index:2;background:var(--surface);min-width:90px}
+th.s1,td.s1{position:sticky;left:90px;z-index:2;background:var(--surface);min-width:130px}
+th.s2,td.s2{position:sticky;left:220px;z-index:2;background:var(--surface);min-width:130px;box-shadow:2px 0 5px rgba(0,0,0,.06)}
+thead th.s0,thead th.s1,thead th.s2{z-index:12}
 .table-header-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
 .table-title{font-size:13px;font-weight:600}
 .row-count{font-size:11px;color:var(--text3)}
@@ -281,9 +286,8 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
         <span class="nav-badge">FY26-27</span>
       </div>
       <div class="nav-tabs">
-        <button class="nav-tab active" id="tab-daily"    onclick="switchTab('daily')">Daily Performance</button>
-        <button class="nav-tab"        id="tab-campaign" onclick="switchTab('campaign')">Campaign Analysis</button>
-        <button class="nav-tab"        id="tab-demand"   onclick="switchTab('demand')">Demand vs Delivery</button>
+        <button class="nav-tab active" id="tab-daily"  onclick="switchTab('daily')">Daily Performance</button>
+        <button class="nav-tab"        id="tab-demand" onclick="switchTab('demand')">Demand vs Delivery</button>
       </div>
     </div>
     <div class="nav-right">
@@ -344,23 +348,6 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
           <span class="row-count" id="rowCount"></span>
         </div>
         <div id="tableContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── CAMPAIGN ANALYSIS SECTION ── -->
-  <div id="campaignSection" style="display:none">
-    <div class="filters">
-      <div class="filter-group"><label>Month</label><select id="c-month" onchange="renderCampaign()"><option value="">All Months</option></select></div>
-      <div class="filter-group"><label>Brand</label><select id="c-brand" onchange="renderCampaign()"><option value="">All Brands</option></select></div>
-      <div class="filter-group"><label>Segment</label><select id="c-segment" onchange="renderCampaign()"><option value="">All Segments</option></select></div>
-      <div class="filter-group"><label>Model</label><select id="c-model" onchange="renderCampaign()"><option value="">All Models</option></select></div>
-      <button class="reset-btn" onclick="resetCampaignFilters()">Reset</button>
-    </div>
-    <div class="table-wrap">
-      <div class="table-card">
-        <div class="table-header-bar"><span class="table-title">Brand & Model Summary — Source-wise KPIs</span><span class="row-count" id="campRowCount"></span></div>
-        <div id="campaignContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
       </div>
     </div>
   </div>
@@ -828,7 +815,7 @@ async function loadData(){
         ctwaSpend:ctwa.spends,ctwaLeads:ctwa.leads,ctwaTrig:ctwaTrigMap[ck]||0,
         combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
     }
-    populateFilters(); applyFilters(); populateCampaignFilters(); renderCampaign(); renderDemand();
+    populateFilters(); applyFilters(); renderDemand();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('statusChip').textContent=`${_rows.length} rows · ${ts}`;
   }catch(e){
@@ -841,11 +828,9 @@ async function loadData(){
 }
 
 function switchTab(tab){
-  document.getElementById('dailySection').style.display   =tab==='daily'   ?'block':'none';
-  document.getElementById('campaignSection').style.display=tab==='campaign'?'block':'none';
-  document.getElementById('demandSection').style.display  =tab==='demand'  ?'block':'none';
+  document.getElementById('dailySection').style.display =tab==='daily' ?'block':'none';
+  document.getElementById('demandSection').style.display=tab==='demand'?'block':'none';
   document.getElementById('tab-daily').classList.toggle('active',tab==='daily');
-  document.getElementById('tab-campaign').classList.toggle('active',tab==='campaign');
   document.getElementById('tab-demand').classList.toggle('active',tab==='demand');
 }
 
@@ -914,12 +899,12 @@ function renderTable(){
     return a.model.localeCompare(b.model);
   });
   let h='<table><thead>';
-  h+='<tr class="group-row"><th class="th-fixed left" colspan="3"></th>';
+  h+='<tr class="group-row"><th class="s0 left" colspan="3"></th>';
   h+='<th class="th-aw" colspan="5">📊 Adwords</th>';
   h+='<th class="th-fb" colspan="5">📱 MS-FB</th>';
   h+='<th class="th-ctwa" colspan="5">💬 CTWA</th>';
   h+='<th class="th-comb" colspan="5">🔗 Combined</th></tr>';
-  h+='<tr class="col-row"><th class="th-fixed left">Date</th><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
+  h+='<tr class="col-row"><th class="s0 left">Date</th><th class="s1 left">Brand</th><th class="s2 left">Model</th>';
   ['aw','fb','ctwa','comb'].forEach(cls=>{
     h+=`<th class="${cls} ${cls}-first">Spends</th><th class="${cls}">Leads</th><th class="${cls}">TLeads</th><th class="${cls}">CPL</th><th class="${cls} ${cls}-last">TCPL</th>`;
   });
@@ -930,13 +915,13 @@ function renderTable(){
     tot.fbS+=r.fbSpend;tot.fbL+=r.fbLeads;tot.fbT+=r.fbTrig;
     tot.ctwaS+=r.ctwaSpend;tot.ctwaL+=r.ctwaLeads;tot.ctwaT+=r.ctwaTrig;
     tot.cS+=r.combSpend;tot.cL+=r.combLeads;tot.cT+=r.combTrig;
-    h+=`<tr><td style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td><td style="font-weight:600">${escH(r.brand)}</td><td>${escH(r.model)}</td>`;
+    h+=`<tr><td class="s0" style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td><td class="s1" style="font-weight:600">${escH(r.brand)}</td><td class="s2">${escH(r.model)}</td>`;
     h+=`<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtL(r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtL(r.awTrig):''}</td><td class="td-num aw">${fmtC(r.awSpend,r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtC(r.awSpend,r.awTrig):''}</td>`;
     h+=`<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtL(r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtL(r.fbTrig):''}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtC(r.fbSpend,r.fbTrig):''}</td>`;
     h+=`<td class="td-num ctwa">${fmtNum(r.ctwaSpend)}</td><td class="td-num ctwa">${fmtL(r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtL(r.ctwaTrig):''}</td><td class="td-num ctwa">${fmtC(r.ctwaSpend,r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtC(r.ctwaSpend,r.ctwaTrig):''}</td>`;
     h+=`<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtL(r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtL(r.combTrig):''}</td><td class="td-num comb">${fmtC(r.combSpend,r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtC(r.combSpend,r.combTrig):''}</td></tr>`;
   }
-  h+='</tbody><tfoot><tr><td class="left" colspan="3">TOTAL</td>';
+  h+='</tbody><tfoot><tr><td class="s0 left" style="font-weight:700">TOTAL</td><td class="s1"></td><td class="s2"></td>';
   h+=`<td class="aw">${fmtNum(tot.awS)}</td><td class="aw">${fmtL(tot.awL)}</td><td class="aw">${fmtL(tot.awT)}</td><td class="aw">${fmtC(tot.awS,tot.awL)}</td><td class="aw">${fmtC(tot.awS,tot.awT)}</td>`;
   h+=`<td class="fb">${fmtNum(tot.fbS)}</td><td class="fb">${fmtL(tot.fbL)}</td><td class="fb">${fmtL(tot.fbT)}</td><td class="fb">${fmtC(tot.fbS,tot.fbL)}</td><td class="fb">${fmtC(tot.fbS,tot.fbT)}</td>`;
   h+=`<td class="ctwa">${fmtNum(tot.ctwaS)}</td><td class="ctwa">${fmtL(tot.ctwaL)}</td><td class="ctwa">${fmtL(tot.ctwaT)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaL)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaT)}</td>`;
@@ -945,17 +930,7 @@ function renderTable(){
   document.getElementById('tableContainer').innerHTML=h;
 }
 
-// ── CAMPAIGN ANALYSIS TAB ──
-function populateCampaignFilters(){
-  const months=[...new Set(_rows.map(r=>r.month))].filter(Boolean).sort();
-  const brands=[...new Set(_rows.map(r=>r.brand))].filter(Boolean).sort();
-  const segments=[...new Set(_rows.map(r=>r.segment))].filter(Boolean).sort();
-  const models=[...new Set(_rows.map(r=>r.model))].filter(Boolean).sort();
-  const s=(id,opts,ph)=>{ const el=document.getElementById(id),cur=el.value; el.innerHTML=`<option value="">${ph}</option>`+opts.map(o=>`<option value="${escH(o)}">${escH(o)}</option>`).join(''); if(cur) el.value=cur; };
-  s('c-month',months,'All Months'); s('c-brand',brands,'All Brands'); s('c-segment',segments,'All Segments'); s('c-model',models,'All Models');
-}
-function resetCampaignFilters(){ ['c-month','c-brand','c-segment','c-model'].forEach(id=>document.getElementById(id).value=''); renderCampaign(); }
-function renderCampaign(){
+function renderCampaign_UNUSED(){
   const cont=document.getElementById('campaignContainer');
   if(!_rows.length){ cont.innerHTML='<div class="empty">No data loaded.</div>'; return; }
   const month=document.getElementById('c-month').value, brand=document.getElementById('c-brand').value;
