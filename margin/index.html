@@ -359,7 +359,7 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
     </div>
     <div class="table-wrap">
       <div class="table-card">
-        <div class="table-header-bar"><span class="table-title">Campaign Type Analysis</span><span class="row-count" id="campRowCount"></span></div>
+        <div class="table-header-bar"><span class="table-title">Brand & Model Summary — Source-wise KPIs</span><span class="row-count" id="campRowCount"></span></div>
         <div id="campaignContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
       </div>
     </div>
@@ -753,7 +753,9 @@ async function loadData(){
       const useListId=['jlr'].some(b=>fb.toLowerCase().includes(b)) ||
         (['citroen','citroën'].some(b=>fb.toLowerCase().includes(b)) && src==='MS-FB');
       const trig=pn(g('Triggered')||g('triggered'))+(useListId?pn(g('TriggeredinListID')||g('Triggered_in_List_ID')||g('triggeredinlistid')):0);
-      const ct=hasTrigCTCol?(g('CampaignType')||g('campaigntype')||src).trim()||src:src;
+      let ct=hasTrigCTCol?(g('CampaignType')||g('campaigntype')||src).trim()||src:src;
+      // Normalize MS_FB/MSFB → MS-FB so it routes to the correct channel bucket
+      if(/^ms_?fb$/i.test(ct)) ct='MS-FB';
       const k=`${date}|${fb}|${fm}|${ct}`;
       if(!trigMap[k]) trigMap[k]=0;
       trigMap[k]+=trig;
@@ -945,78 +947,69 @@ function renderTable(){
 
 // ── CAMPAIGN ANALYSIS TAB ──
 function populateCampaignFilters(){
-  const months=[...new Set(_ctRows.map(r=>r.month))].filter(Boolean).sort();
-  const brands=[...new Set(_ctRows.map(r=>r.brand))].filter(Boolean).sort();
-  const segments=[...new Set(_ctRows.map(r=>r.segment))].filter(Boolean).sort();
-  const models=[...new Set(_ctRows.map(r=>r.model))].filter(Boolean).sort();
-  const s=(id,opts,placeholder)=>{ const el=document.getElementById(id),cur=el.value; el.innerHTML=`<option value="">${placeholder}</option>`+opts.map(o=>`<option value="${escH(o)}">${escH(o)}</option>`).join(''); if(cur) el.value=cur; };
+  const months=[...new Set(_rows.map(r=>r.month))].filter(Boolean).sort();
+  const brands=[...new Set(_rows.map(r=>r.brand))].filter(Boolean).sort();
+  const segments=[...new Set(_rows.map(r=>r.segment))].filter(Boolean).sort();
+  const models=[...new Set(_rows.map(r=>r.model))].filter(Boolean).sort();
+  const s=(id,opts,ph)=>{ const el=document.getElementById(id),cur=el.value; el.innerHTML=`<option value="">${ph}</option>`+opts.map(o=>`<option value="${escH(o)}">${escH(o)}</option>`).join(''); if(cur) el.value=cur; };
   s('c-month',months,'All Months'); s('c-brand',brands,'All Brands'); s('c-segment',segments,'All Segments'); s('c-model',models,'All Models');
 }
 function resetCampaignFilters(){ ['c-month','c-brand','c-segment','c-model'].forEach(id=>document.getElementById(id).value=''); renderCampaign(); }
 function renderCampaign(){
   const cont=document.getElementById('campaignContainer');
-  if(!_ctRows.length){ cont.innerHTML='<div class="empty">No data loaded.</div>'; return; }
+  if(!_rows.length){ cont.innerHTML='<div class="empty">No data loaded.</div>'; return; }
   const month=document.getElementById('c-month').value, brand=document.getElementById('c-brand').value;
   const segment=document.getElementById('c-segment').value, model=document.getElementById('c-model').value;
-  const filtered=_ctRows.filter(r=>{
+  const filtered=_rows.filter(r=>{
     if(month&&r.month!==month) return false;
     if(brand&&r.brand!==brand) return false;
     if(segment&&r.segment!==segment) return false;
     if(model&&r.model!==model) return false;
     return true;
   });
-  // Aggregate by brand|model|campaignType
-  const agg={}, brandOrder=[], modelOrder={}, bmOrder={};
+  if(!filtered.length){ cont.innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
+  // Aggregate by brand|model
+  const agg={};
   for(const r of filtered){
-    const bk=r.brand, mk=`${r.brand}|${r.model}`, ck=`${r.brand}|${r.model}|${r.campaignType}`;
-    if(!agg[ck]){ agg[ck]={brand:r.brand,model:r.model,ct:r.campaignType,buGroup:r.buGroup,s:0,l:0,t:0}; }
-    agg[ck].s+=r.spends; agg[ck].l+=r.leads; agg[ck].t+=r.tleads;
-    if(!brandOrder.includes(bk)) brandOrder.push(bk);
-    if(!modelOrder[bk]) modelOrder[bk]=[];
-    if(!modelOrder[bk].includes(r.model)) modelOrder[bk].push(r.model);
-    if(!bmOrder[mk]) bmOrder[mk]=[];
-    if(!bmOrder[mk].includes(r.campaignType)) bmOrder[mk].push(r.campaignType);
+    const k=`${r.brand}|${r.model}`;
+    if(!agg[k]) agg[k]={brand:r.brand,model:r.model,awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0};
+    const a=agg[k];
+    a.awS+=r.awSpend; a.awL+=r.awLeads; a.awT+=r.awTrig;
+    a.fbS+=r.fbSpend; a.fbL+=r.fbLeads; a.fbT+=r.fbTrig;
+    a.ctwaS+=r.ctwaSpend; a.ctwaL+=r.ctwaLeads; a.ctwaT+=r.ctwaTrig;
+    a.cS+=r.combSpend; a.cL+=r.combLeads; a.cT+=r.combTrig;
   }
-  brandOrder.sort(); for(const b of brandOrder){ modelOrder[b]&&modelOrder[b].sort(); }
-  // Brand/model totals
-  const brandTot={}, modelTot={};
-  for(const v of Object.values(agg)){
-    const bk=v.brand, mk=`${v.brand}|${v.model}`;
-    if(!brandTot[bk]) brandTot[bk]={s:0,l:0,t:0};
-    brandTot[bk].s+=v.s; brandTot[bk].l+=v.l; brandTot[bk].t+=v.t;
-    if(!modelTot[mk]) modelTot[mk]={s:0,l:0,t:0};
-    modelTot[mk].s+=v.s; modelTot[mk].l+=v.l; modelTot[mk].t+=v.t;
+  const rows=Object.values(agg).sort((a,b)=>b.cS-a.cS||a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model));
+  const tot={awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0};
+  let h='<table><thead>';
+  h+='<tr class="group-row"><th class="th-fixed left" colspan="2"></th>';
+  h+='<th class="th-aw" colspan="5">📊 Adwords</th>';
+  h+='<th class="th-fb" colspan="5">📱 MS-FB</th>';
+  h+='<th class="th-ctwa" colspan="5">💬 CTWA</th>';
+  h+='<th class="th-comb" colspan="5">🔗 Combined</th></tr>';
+  h+='<tr class="col-row"><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
+  ['aw','fb','ctwa','comb'].forEach(cls=>{
+    h+=`<th class="${cls} ${cls}-first">Spends</th><th class="${cls}">Leads</th><th class="${cls}">TLeads</th><th class="${cls}">CPL</th><th class="${cls} ${cls}-last">TCPL</th>`;
+  });
+  h+='</tr></thead><tbody>';
+  for(const r of rows){
+    tot.awS+=r.awS; tot.awL+=r.awL; tot.awT+=r.awT;
+    tot.fbS+=r.fbS; tot.fbL+=r.fbL; tot.fbT+=r.fbT;
+    tot.ctwaS+=r.ctwaS; tot.ctwaL+=r.ctwaL; tot.ctwaT+=r.ctwaT;
+    tot.cS+=r.cS; tot.cL+=r.cL; tot.cT+=r.cT;
+    h+=`<tr><td style="font-weight:600">${escH(r.brand)}</td><td>${escH(r.model)}</td>`;
+    h+=`<td class="td-num aw">${fmtNum(r.awS)}</td><td class="td-num aw">${fmtL(r.awL)}</td><td class="td-num aw">${r.awT>0?fmtL(r.awT):''}</td><td class="td-num aw">${fmtC(r.awS,r.awL)}</td><td class="td-num aw">${r.awT>0?fmtC(r.awS,r.awT):''}</td>`;
+    h+=`<td class="td-num fb">${fmtNum(r.fbS)}</td><td class="td-num fb">${fmtL(r.fbL)}</td><td class="td-num fb">${r.fbT>0?fmtL(r.fbT):''}</td><td class="td-num fb">${fmtC(r.fbS,r.fbL)}</td><td class="td-num fb">${r.fbT>0?fmtC(r.fbS,r.fbT):''}</td>`;
+    h+=`<td class="td-num ctwa">${fmtNum(r.ctwaS)}</td><td class="td-num ctwa">${fmtL(r.ctwaL)}</td><td class="td-num ctwa">${r.ctwaT>0?fmtL(r.ctwaT):''}</td><td class="td-num ctwa">${fmtC(r.ctwaS,r.ctwaL)}</td><td class="td-num ctwa">${r.ctwaT>0?fmtC(r.ctwaS,r.ctwaT):''}</td>`;
+    h+=`<td class="td-num comb">${fmtNum(r.cS)}</td><td class="td-num comb">${fmtL(r.cL)}</td><td class="td-num comb">${r.cT>0?fmtL(r.cT):''}</td><td class="td-num comb">${fmtC(r.cS,r.cL)}</td><td class="td-num comb">${r.cT>0?fmtC(r.cS,r.cT):''}</td></tr>`;
   }
-  let totS=0,totL=0,totT=0;
-  let h='<table class="hier-table"><thead><tr><th style="text-align:left">Brand / Model / Campaign Type</th><th>Spends</th><th>Leads</th><th>TLeads</th><th>CPL</th><th>TCPL</th></tr></thead><tbody>';
-  for(const brand of brandOrder){
-    const bt=brandTot[brand]||{s:0,l:0,t:0};
-    totS+=bt.s; totL+=bt.l; totT+=bt.t;
-    h+=`<tr class="row-date" data-key="b|${escH(brand)}" style="cursor:pointer"><td><span class="expand-icon">▼</span>${escH(brand)}</td><td>${fmtNum(bt.s)}</td><td>${fmtL(bt.l)}</td><td>${bt.t>0?fmtL(bt.t):''}</td><td>${fmtC(bt.s,bt.l)}</td><td>${bt.t>0?fmtC(bt.s,bt.t):''}</td></tr>`;
-    for(const model of (modelOrder[brand]||[])){
-      const mk=`${brand}|${model}`, mt=modelTot[mk]||{s:0,l:0,t:0};
-      const cts=(bmOrder[mk]||[]).sort();
-      h+=`<tr class="row-brand" data-parent="b|${escH(brand)}" data-key="m|${escH(mk)}" style="cursor:pointer"><td><span class="expand-icon">▶</span>${escH(model)}</td><td>${fmtNum(mt.s)}</td><td>${fmtL(mt.l)}</td><td>${mt.t>0?fmtL(mt.t):''}</td><td>${fmtC(mt.s,mt.l)}</td><td>${mt.t>0?fmtC(mt.s,mt.t):''}</td></tr>`;
-      for(const ct of cts){
-        const v=agg[`${mk}|${ct}`]||{s:0,l:0,t:0,buGroup:''};
-        const cls=v.buGroup==='Adwords'?'ct-aw':v.buGroup==='MS-FB'?'ct-fb':'ct-other';
-        h+=`<tr class="row-model hidden" data-parent="m|${escH(mk)}"><td><span class="expand-icon" style="opacity:0">·</span><span class="ct-tag ${cls}">${escH(ct)}</span></td><td>${fmtNum(v.s)}</td><td>${fmtL(v.l)}</td><td>${v.t>0?fmtL(v.t):''}</td><td>${fmtC(v.s,v.l)}</td><td>${v.t>0?fmtC(v.s,v.t):''}</td></tr>`;
-      }
-    }
-  }
-  h+=`</tbody><tfoot><tr class="hier-tfoot"><td>TOTAL</td><td>${fmtNum(totS)}</td><td>${fmtL(totL)}</td><td>${totT>0?fmtL(totT):''}</td><td>${fmtC(totS,totL)}</td><td>${totT>0?fmtC(totS,totT):''}</td></tr></tfoot></table>`;
+  h+='</tbody><tfoot><tr><td class="left" colspan="2">TOTAL</td>';
+  h+=`<td class="aw">${fmtNum(tot.awS)}</td><td class="aw">${fmtL(tot.awL)}</td><td class="aw">${fmtL(tot.awT)}</td><td class="aw">${fmtC(tot.awS,tot.awL)}</td><td class="aw">${fmtC(tot.awS,tot.awT)}</td>`;
+  h+=`<td class="fb">${fmtNum(tot.fbS)}</td><td class="fb">${fmtL(tot.fbL)}</td><td class="fb">${fmtL(tot.fbT)}</td><td class="fb">${fmtC(tot.fbS,tot.fbL)}</td><td class="fb">${fmtC(tot.fbS,tot.fbT)}</td>`;
+  h+=`<td class="ctwa">${fmtNum(tot.ctwaS)}</td><td class="ctwa">${fmtL(tot.ctwaL)}</td><td class="ctwa">${fmtL(tot.ctwaT)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaL)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaT)}</td>`;
+  h+=`<td class="comb">${fmtNum(tot.cS)}</td><td class="comb">${fmtL(tot.cL)}</td><td class="comb">${fmtL(tot.cT)}</td><td class="comb">${fmtC(tot.cS,tot.cL)}</td><td class="comb">${fmtC(tot.cS,tot.cT)}</td></tr></tfoot></table>`;
   cont.innerHTML=h;
-  document.getElementById('campRowCount').textContent=`${Object.keys(agg).length} campaign types`;
-  cont.onclick=e=>{ const tr=e.target.closest('tr[data-key]'); if(tr) toggleCampRow(tr.dataset.key); };
-}
-function toggleCampRow(key){
-  const rows=[...document.querySelectorAll('#campaignContainer tr')];
-  const children=rows.filter(r=>r.dataset.parent===key);
-  if(!children.length) return;
-  const exp=children[0].classList.contains('hidden');
-  children.forEach(c=>{ exp?c.classList.remove('hidden'):c.classList.add('hidden'); });
-  const p=rows.find(r=>r.dataset.key===key);
-  if(p){ const ic=p.querySelector('.expand-icon'); if(ic) ic.textContent=exp?'▼':'▶'; }
+  document.getElementById('campRowCount').textContent=`${rows.length} models`;
 }
 
 function renderDemand(){
