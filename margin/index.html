@@ -653,6 +653,12 @@ function fmtNum(n){ if(n===0) return '—'; if(n>=1e7) return '₹'+(n/1e7).toFi
 function fmtL(n){ return n===0?'—':Math.round(n).toLocaleString('en-IN'); }
 function fmtC(s,l){ return l===0?'—':'₹'+Math.round(s/l).toLocaleString('en-IN'); }
 function normModel(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+const _MO_NAMES=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function monthLabel(dateStr){
+  if(!dateStr) return '';
+  const p=dateStr.split('-'); // yyyy-mm-dd
+  return `${_MO_NAMES[+p[1]]}'${p[0].slice(2)}`;
+}
 
 function getBuGroup(bu){
   const l=(bu||'').toLowerCase();
@@ -671,12 +677,17 @@ async function loadData(){
       fetch(DEMAND_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
       fetch(REF_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
     ]);
-    // Build brand/model reference mapping
-    const refMap={};
+    // Build brand/model reference mapping + segment lookup
+    const refMap={}, refSeg={};
     for(const r of parseCSV(refT)){
       const brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
       const bm=(r['Brand_Mapping']||'').trim(), mm=(r['Model_Mapping']||'').trim();
-      if(brand&&model) refMap[`${brand.toLowerCase()}|${model.toLowerCase()}`]={bm:bm||brand,mm:mm||model};
+      const seg=(r['Segment']||'').trim();
+      if(brand&&model){
+        refMap[`${brand.toLowerCase()}|${model.toLowerCase()}`]={bm:bm||brand,mm:mm||model};
+      }
+      const rb=bm||brand, rm=mm||model;
+      if(rb&&rm&&seg) refSeg[`${rb.toLowerCase()}|${rm.toLowerCase()}`]=seg;
     }
     const tT=await fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text());
     // Demand
@@ -685,16 +696,32 @@ async function loadData(){
       const m=(r['Models']||'').trim();
       if(m) _demandMap[normModel(m)]={raw:m,demand:pn(r['Daily Demand'])};
     }
-    // Enterprise
+    // Enterprise — two-pass to avoid double-counting while not dropping rows missing Campaign Type
     const entMap={};
     const parsedEnt=parseCSV(eT);
-    // Detect if Campaign Type column is populated in the sheet
     const hasCTCol=parsedEnt.some(r=>(r['Campaign Type']||'').trim());
+    // Pass 1: collect date|brand|model keys that have at least one CT-specific row
+    const ctKeys=new Set();
+    if(hasCTCol){
+      for(const r of parsedEnt){
+        if(!(r['Campaign Type']||'').trim()) continue;
+        const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
+        if(date&&brand&&model) ctKeys.add(`${date}|${brand}|${model}`);
+      }
+    }
+    // Pass 2: build entMap — use CT when available; for rows with blank CT only include if their
+    //         date|brand|model has NO CT rows (prevents double-counting legacy BU-Type rows)
     for(const r of parsedEnt){
-      const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim(), bu=(r['BU Type']||'').trim(), month=(r['Month']||'').trim(), segment=(r['Segment']||'').trim();
-      // If the sheet has a Campaign Type column, use it exclusively (skip rows where it's blank to avoid double-counting with BU Type rows)
-      const ct=hasCTCol?(r['Campaign Type']||'').trim():bu;
+      const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
+      const bu=(r['BU Type']||'').trim();
+      const rawCT=hasCTCol?(r['Campaign Type']||'').trim():'';
+      const ck=`${date}|${brand}|${model}`;
+      // If this key has CT rows, only include rows with CT filled
+      if(hasCTCol && ctKeys.has(ck) && !rawCT) continue;
+      const ct=rawCT||bu;
       if(!date||!brand||!model||!ct) continue;
+      const month=monthLabel(date);
+      const segment=refSeg[`${brand.toLowerCase()}|${model.toLowerCase()}`]||'';
       const k=`${date}|${brand}|${model}|${ct}`;
       if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
@@ -756,7 +783,7 @@ async function loadData(){
       const parts=tk.split('|'); // date|brand|model
       if(!comboSet.has(tk)){
         comboSet.add(tk);
-        const mo=parts[0]?new Date(parts[0]).toLocaleString('en-IN',{month:'short',year:'2-digit'}).replace(' ','-'):'';
+        const mo=monthLabel(parts[0]);
         comboMeta[tk]={date:parts[0],brand:parts[1],model:parts[2],month:mo,segment:segMap[tk]||''};
       }
     }
