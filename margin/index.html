@@ -693,47 +693,44 @@ async function loadData(){
       if(m) _demandMap[normModel(m)]={raw:m,demand:pn(r['Daily Demand'])};
     }
     // Enterprise — two-pass to avoid double-counting while not dropping rows missing Campaign Type
+    // All intermediate map keys use lowercase brand|model to ensure case-insensitive matching with triggers
     const entMap={};
     const parsedEnt=parseCSV(eT);
     const hasCTCol=parsedEnt.some(r=>(r['Campaign Type']||'').trim());
-    // Pass 1: collect date|brand|model keys that have at least one CT-specific row
+    // Pass 1: collect date|brand|model keys (lowercase) that have at least one CT-specific row
     const ctKeys=new Set();
     if(hasCTCol){
       for(const r of parsedEnt){
         if(!(r['Campaign Type']||'').trim()) continue;
         const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
-        if(date&&brand&&model) ctKeys.add(`${date}|${brand}|${model}`);
+        if(date&&brand&&model) ctKeys.add(`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`);
       }
     }
-    // Pass 2: build entMap — use CT when available; for rows with blank CT only include if their
-    //         date|brand|model has NO CT rows (prevents double-counting legacy BU-Type rows)
+    // Pass 2: build entMap — key uses lowercase brand/model; stored values keep original case for display
     for(const r of parsedEnt){
       const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
       const bu=(r['BU Type']||'').trim();
       const rawCT=hasCTCol?(r['Campaign Type']||'').trim():'';
-      const ck=`${date}|${brand}|${model}`;
-      // If this key has CT rows, only include rows with CT filled
+      const ck=`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`;
       if(hasCTCol && ctKeys.has(ck) && !rawCT) continue;
       const ct=rawCT||bu;
       if(!date||!brand||!model||!ct) continue;
       const month=monthLabel(date);
       const segment=refSeg[`${brand.toLowerCase()}|${model.toLowerCase()}`]||brandRefSeg[brand.toLowerCase()]||'';
-      const k=`${date}|${brand}|${model}|${ct}`;
+      const k=`${ck}|${ct}`;
       if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
-    // Triggers — keyed by campaign type (if column exists) or source
+    // Triggers — keyed by campaign type (if column exists) or source; lowercase brand|model in keys
     _trigMap={}; const trigMap=_trigMap, segMap={};
-    const combTrigMap={}; // sum of ALL sources per date|brand|model
+    const combTrigMap={};
     const parsedTrig=parseCSV(tT);
     const hasTrigCTCol=parsedTrig.some(r=>makeRow(r)('campaigntype'));
-    let trigMatched=0;
     for(const r of parsedTrig){
       const g=makeRow(r);
       const date=normalizeDate(g('Date')||g('date')||g('Day')||g('day'));
       const rawBrand=(g('brand')||g('Brand')||'').trim();
       const rawModel=(g('model')||g('Model')||'').trim();
-      // Priority: Brand_Mapped/Model_Mapped (gsheet columns) → Final_Brand/Model → refMap → raw
       let fb=(g('brandmapped')||g('BrandMapped')||g('FinalBrand')||g('Final_Brand')||g('BrandMapping')||'').trim();
       let fm=(g('modelmapped')||g('ModelMapped')||g('FinalModel')||g('Final_Model')||g('ModelMapping')||'').trim();
       if(!fb||!fm){
@@ -745,39 +742,32 @@ async function loadData(){
       let src=(g('finalsource')||g('final_source')||g('BUType')||g('source')).trim();
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
-      trigMatched++;
       const useListId=['jlr','lexus'].some(b=>fb.toLowerCase().includes(b)) ||
         (['citroen','citroën'].some(b=>fb.toLowerCase().includes(b)) && src==='MS-FB');
       const trig=pn(g('Triggered')||g('triggered'))+(useListId?pn(g('TriggeredinListID')||g('Triggered_in_List_ID')||g('triggeredinlistid')):0);
       let ct=hasTrigCTCol?(g('CampaignType')||g('campaigntype')||src).trim()||src:src;
-      // Normalize MS_FB/MSFB → MS-FB so it routes to the correct channel bucket
       if(/^ms_?fb$/i.test(ct)) ct='MS-FB';
-      const k=`${date}|${fb}|${fm}|${ct}`;
+      const fbL=fb.toLowerCase(), fmL=fm.toLowerCase();
+      const k=`${date}|${fbL}|${fmL}|${ct}`;
       if(!trigMap[k]) trigMap[k]=0;
       trigMap[k]+=trig;
-      const ck=`${date}|${fb}|${fm}`;
+      const ck=`${date}|${fbL}|${fmL}`;
       if(!combTrigMap[ck]) combTrigMap[ck]=0;
       combTrigMap[ck]+=trig;
       const seg=g('Segment')||g('segment');
       if(seg) segMap[ck]=seg;
-      if(fb.toLowerCase().includes('lexus')||rawBrand.toLowerCase().includes('lexus'))
-        console.log('[LEXUS TRIG]',{rawBrand,rawModel,fb,fm,src,ct,trig,k});
     }
-    // Debug: log Lexus entMap keys
-    for(const [k,v] of Object.entries(entMap)){
-      if(v.brand.toLowerCase().includes('lexus')) console.log('[LEXUS ENT]',{k,brand:v.brand,model:v.model,bu:v.bu});
-    }
-    // Pre-compute combined spend/leads across ALL campaign types per date|brand|model
+    // Pre-compute combined spend/leads per date|brand|model (lowercase key)
     const combMap={};
     for(const v of Object.values(entMap)){
-      const ck=`${v.date}|${v.brand}|${v.model}`;
+      const ck=`${v.date}|${v.brand.toLowerCase()}|${v.model.toLowerCase()}`;
       if(!combMap[ck]) combMap[ck]={spends:0,leads:0};
       combMap[ck].spends+=v.spends; combMap[ck].leads+=v.leads;
     }
-    // Build rows
+    // Build rows — comboSet/comboMeta keyed by lowercase ck; display values keep original case
     const comboSet=new Set(), comboMeta={};
     for(const v of Object.values(entMap)){
-      const ck=`${v.date}|${v.brand}|${v.model}`;
+      const ck=`${v.date}|${v.brand.toLowerCase()}|${v.model.toLowerCase()}`;
       comboSet.add(ck);
       if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
       if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
@@ -789,14 +779,14 @@ async function loadData(){
     // Campaign-type rows (for hierarchical view) — built after trigMap is ready
     _ctRows=[];
     for(const v of Object.values(entMap)){
-      const ck=`${v.date}|${v.brand}|${v.model}`;
+      const ck=`${v.date}|${v.brand.toLowerCase()}|${v.model.toLowerCase()}`;
       const tleads=trigMap[`${ck}|${v.bu}`]||0;
       _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads,tleads});
     }
-    // Aggregate spend/leads per channel (Adwords / MS-FB / CTWA)
+    // Aggregate spend/leads per channel (Adwords / MS-FB / CTWA) — lowercase keys
     const awMap={}, fbMap={}, ctwaMap={};
     for(const v of Object.values(entMap)){
-      const ck=`${v.date}|${v.brand}|${v.model}`;
+      const ck=`${v.date}|${v.brand.toLowerCase()}|${v.model.toLowerCase()}`;
       const buL=v.bu.toLowerCase();
       if(v.buGroup==='Adwords'){ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
       else if(buL==='ctwa'||buL==='ctwa (meta)'||buL.includes('whatsapp')){ if(!ctwaMap[ck]) ctwaMap[ck]={spends:0,leads:0}; ctwaMap[ck].spends+=v.spends; ctwaMap[ck].leads+=v.leads; }
