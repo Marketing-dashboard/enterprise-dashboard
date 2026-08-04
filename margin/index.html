@@ -767,15 +767,6 @@ async function loadData(){
       if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
       if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
     }
-    // Add trigger-only rows (have triggers but no spend)
-    for(const tk of Object.keys(combTrigMap)){
-      const parts=tk.split('|'); // date|brand|model
-      if(!comboSet.has(tk)){
-        comboSet.add(tk);
-        const mo=monthLabel(parts[0]);
-        comboMeta[tk]={date:parts[0],brand:parts[1],model:parts[2],month:mo,segment:segMap[tk]||''};
-      }
-    }
     // Fill missing segments using brand-level fallback
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
