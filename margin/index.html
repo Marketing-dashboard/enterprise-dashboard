@@ -746,7 +746,7 @@ async function loadData(){
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
       trigMatched++;
-      const useListId=['jlr'].some(b=>fb.toLowerCase().includes(b)) ||
+      const useListId=['jlr','lexus'].some(b=>fb.toLowerCase().includes(b)) ||
         (['citroen','citroën'].some(b=>fb.toLowerCase().includes(b)) && src==='MS-FB');
       const trig=pn(g('Triggered')||g('triggered'))+(useListId?pn(g('TriggeredinListID')||g('Triggered_in_List_ID')||g('triggeredinlistid')):0);
       let ct=hasTrigCTCol?(g('CampaignType')||g('campaigntype')||src).trim()||src:src;
