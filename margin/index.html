@@ -128,6 +128,13 @@ th.s0,td.s0{position:sticky;left:0;z-index:2;background:var(--surface);min-width
 th.s1,td.s1{position:sticky;left:90px;z-index:2;background:var(--surface);min-width:130px}
 th.s2,td.s2{position:sticky;left:220px;z-index:2;background:var(--surface);min-width:130px;box-shadow:2px 0 5px rgba(0,0,0,.06)}
 thead th.s0,thead th.s1,thead th.s2{z-index:12}
+tr.brand-row td{background:var(--surface-alt,#f8fafc);font-weight:700;cursor:pointer}
+tr.brand-row:hover td{background:var(--hover,#f1f5f9)}
+tr.brand-row td.s0,tr.brand-row td.s1,tr.brand-row td.s2{background:var(--surface-alt,#f8fafc)}
+tr.brand-row:hover td.s0,tr.brand-row:hover td.s1,tr.brand-row:hover td.s2{background:var(--hover,#f1f5f9)}
+tr.model-row td{font-size:12px}
+tr.model-row.hidden{display:none}
+.expand-icon{display:inline-block;width:14px;font-size:10px;transition:transform .15s;user-select:none}
 .table-header-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
 .table-title{font-size:13px;font-weight:600}
 .row-count{font-size:11px;color:var(--text3)}
@@ -665,7 +672,7 @@ async function loadData(){
       fetch(REF_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
     ]);
     // Build brand/model reference mapping + segment lookup
-    const refMap={}, refSeg={};
+    const refMap={}, refSeg={}, brandRefSeg={};
     for(const r of parseCSV(refT)){
       const brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
       const bm=(r['Brand_Mapping']||'').trim(), mm=(r['Model_Mapping']||'').trim();
@@ -675,6 +682,8 @@ async function loadData(){
       }
       const rb=bm||brand, rm=mm||model;
       if(rb&&rm&&seg) refSeg[`${rb.toLowerCase()}|${rm.toLowerCase()}`]=seg;
+      // Brand-level fallback segment
+      if(rb&&seg&&!brandRefSeg[rb.toLowerCase()]) brandRefSeg[rb.toLowerCase()]=seg;
     }
     const tT=await fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text());
     // Demand
@@ -708,7 +717,7 @@ async function loadData(){
       const ct=rawCT||bu;
       if(!date||!brand||!model||!ct) continue;
       const month=monthLabel(date);
-      const segment=refSeg[`${brand.toLowerCase()}|${model.toLowerCase()}`]||'';
+      const segment=refSeg[`${brand.toLowerCase()}|${model.toLowerCase()}`]||brandRefSeg[brand.toLowerCase()]||'';
       const k=`${date}|${brand}|${model}|${ct}`;
       if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
@@ -889,6 +898,21 @@ function renderTable(){
     const db=a.brand.localeCompare(b.brand); if(db) return db;
     return a.model.localeCompare(b.model);
   });
+  // Group by date|brand
+  const groups=[], groupMap={};
+  for(const r of sorted){
+    const bk=`${r.date}|${r.brand}`;
+    if(!groupMap[bk]){
+      const g={key:bk,date:r.date,brand:r.brand,awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0,models:[]};
+      groupMap[bk]=g; groups.push(g);
+    }
+    const g=groupMap[bk];
+    g.awS+=r.awSpend;g.awL+=r.awLeads;g.awT+=r.awTrig;
+    g.fbS+=r.fbSpend;g.fbL+=r.fbLeads;g.fbT+=r.fbTrig;
+    g.ctwaS+=r.ctwaSpend;g.ctwaL+=r.ctwaLeads;g.ctwaT+=r.ctwaTrig;
+    g.cS+=r.combSpend;g.cL+=r.combLeads;g.cT+=r.combTrig;
+    g.models.push(r);
+  }
   let h='<table><thead>';
   h+='<tr class="group-row"><th class="s0 left" colspan="3"></th>';
   h+='<th class="th-aw" colspan="5">📊 Adwords</th>';
@@ -901,16 +925,27 @@ function renderTable(){
   });
   h+='</tr></thead><tbody>';
   const tot={awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0};
-  for(const r of sorted){
-    tot.awS+=r.awSpend;tot.awL+=r.awLeads;tot.awT+=r.awTrig;
-    tot.fbS+=r.fbSpend;tot.fbL+=r.fbLeads;tot.fbT+=r.fbTrig;
-    tot.ctwaS+=r.ctwaSpend;tot.ctwaL+=r.ctwaLeads;tot.ctwaT+=r.ctwaTrig;
-    tot.cS+=r.combSpend;tot.cL+=r.combLeads;tot.cT+=r.combTrig;
-    h+=`<tr><td class="s0" style="font-weight:600;white-space:nowrap">${fmtDate(r.date)}</td><td class="s1" style="font-weight:600">${escH(r.brand)}</td><td class="s2">${escH(r.model)}</td>`;
-    h+=`<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtL(r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtL(r.awTrig):''}</td><td class="td-num aw">${fmtC(r.awSpend,r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtC(r.awSpend,r.awTrig):''}</td>`;
-    h+=`<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtL(r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtL(r.fbTrig):''}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtC(r.fbSpend,r.fbTrig):''}</td>`;
-    h+=`<td class="td-num ctwa">${fmtNum(r.ctwaSpend)}</td><td class="td-num ctwa">${fmtL(r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtL(r.ctwaTrig):''}</td><td class="td-num ctwa">${fmtC(r.ctwaSpend,r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtC(r.ctwaSpend,r.ctwaTrig):''}</td>`;
-    h+=`<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtL(r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtL(r.combTrig):''}</td><td class="td-num comb">${fmtC(r.combSpend,r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtC(r.combSpend,r.combTrig):''}</td></tr>`;
+  const bkEnc=k=>k.replace(/"/g,'&quot;');
+  for(const g of groups){
+    tot.awS+=g.awS;tot.awL+=g.awL;tot.awT+=g.awT;
+    tot.fbS+=g.fbS;tot.fbL+=g.fbL;tot.fbT+=g.fbT;
+    tot.ctwaS+=g.ctwaS;tot.ctwaL+=g.ctwaL;tot.ctwaT+=g.ctwaT;
+    tot.cS+=g.cS;tot.cL+=g.cL;tot.cT+=g.cT;
+    const nc=g.models.length, multi=nc>1;
+    const icon=multi?`<span class="expand-icon" id="ei-${bkEnc(g.key)}">▶ </span>`:'';
+    const onclick=multi?` onclick="toggleModels('${bkEnc(g.key)}')"`:' style="cursor:default"';
+    h+=`<tr class="brand-row"${onclick}><td class="s0" style="white-space:nowrap">${fmtDate(g.date)}</td><td class="s1">${icon}${escH(g.brand)}</td><td class="s2" style="color:var(--text3);font-weight:400;font-size:11px">${multi?nc+' models':escH(g.models[0].model)}</td>`;
+    h+=`<td class="td-num aw">${fmtNum(g.awS)}</td><td class="td-num aw">${fmtL(g.awL)}</td><td class="td-num aw">${g.awT>0?fmtL(g.awT):''}</td><td class="td-num aw">${fmtC(g.awS,g.awL)}</td><td class="td-num aw">${g.awT>0?fmtC(g.awS,g.awT):''}</td>`;
+    h+=`<td class="td-num fb">${fmtNum(g.fbS)}</td><td class="td-num fb">${fmtL(g.fbL)}</td><td class="td-num fb">${g.fbT>0?fmtL(g.fbT):''}</td><td class="td-num fb">${fmtC(g.fbS,g.fbL)}</td><td class="td-num fb">${g.fbT>0?fmtC(g.fbS,g.fbT):''}</td>`;
+    h+=`<td class="td-num ctwa">${fmtNum(g.ctwaS)}</td><td class="td-num ctwa">${fmtL(g.ctwaL)}</td><td class="td-num ctwa">${g.ctwaT>0?fmtL(g.ctwaT):''}</td><td class="td-num ctwa">${fmtC(g.ctwaS,g.ctwaL)}</td><td class="td-num ctwa">${g.ctwaT>0?fmtC(g.ctwaS,g.ctwaT):''}</td>`;
+    h+=`<td class="td-num comb">${fmtNum(g.cS)}</td><td class="td-num comb">${fmtL(g.cL)}</td><td class="td-num comb">${g.cT>0?fmtL(g.cT):''}</td><td class="td-num comb">${fmtC(g.cS,g.cL)}</td><td class="td-num comb">${g.cT>0?fmtC(g.cS,g.cT):''}</td></tr>`;
+    if(multi) for(const r of g.models){
+      h+=`<tr class="model-row hidden" data-bk="${bkEnc(g.key)}"><td class="s0"></td><td class="s1" style="font-weight:400;color:var(--text2)"></td><td class="s2" style="padding-left:20px">${escH(r.model)}</td>`;
+      h+=`<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtL(r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtL(r.awTrig):''}</td><td class="td-num aw">${fmtC(r.awSpend,r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtC(r.awSpend,r.awTrig):''}</td>`;
+      h+=`<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtL(r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtL(r.fbTrig):''}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtC(r.fbSpend,r.fbTrig):''}</td>`;
+      h+=`<td class="td-num ctwa">${fmtNum(r.ctwaSpend)}</td><td class="td-num ctwa">${fmtL(r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtL(r.ctwaTrig):''}</td><td class="td-num ctwa">${fmtC(r.ctwaSpend,r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtC(r.ctwaSpend,r.ctwaTrig):''}</td>`;
+      h+=`<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtL(r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtL(r.combTrig):''}</td><td class="td-num comb">${fmtC(r.combSpend,r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtC(r.combSpend,r.combTrig):''}</td></tr>`;
+    }
   }
   h+='</tbody><tfoot><tr><td class="s0 left" style="font-weight:700">TOTAL</td><td class="s1"></td><td class="s2"></td>';
   h+=`<td class="aw">${fmtNum(tot.awS)}</td><td class="aw">${fmtL(tot.awL)}</td><td class="aw">${fmtL(tot.awT)}</td><td class="aw">${fmtC(tot.awS,tot.awL)}</td><td class="aw">${fmtC(tot.awS,tot.awT)}</td>`;
@@ -919,6 +954,13 @@ function renderTable(){
   h+=`<td class="comb">${fmtNum(tot.cS)}</td><td class="comb">${fmtL(tot.cL)}</td><td class="comb">${fmtL(tot.cT)}</td><td class="comb">${fmtC(tot.cS,tot.cL)}</td><td class="comb">${fmtC(tot.cS,tot.cT)}</td>`;
   h+='</tr></tfoot></table>';
   document.getElementById('tableContainer').innerHTML=h;
+}
+function toggleModels(bk){
+  const rows=document.querySelectorAll(`tr.model-row[data-bk="${CSS.escape(bk)}"]`);
+  const icon=document.getElementById(`ei-${bk}`);
+  const hidden=rows[0]&&rows[0].classList.contains('hidden');
+  rows.forEach(r=>r.classList.toggle('hidden',!hidden));
+  if(icon) icon.textContent=hidden?'▼ ':'▶ ';
 }
 
 function renderCampaign_UNUSED(){
