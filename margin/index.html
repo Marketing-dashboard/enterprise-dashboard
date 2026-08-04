@@ -760,6 +760,12 @@ async function loadData(){
       combTrigMap[ck]+=trig;
       const seg=g('Segment')||g('segment');
       if(seg) segMap[ck]=seg;
+      if(fb.toLowerCase().includes('lexus')||rawBrand.toLowerCase().includes('lexus'))
+        console.log('[LEXUS TRIG]',{rawBrand,rawModel,fb,fm,src,ct,trig,k});
+    }
+    // Debug: log Lexus entMap keys
+    for(const [k,v] of Object.entries(entMap)){
+      if(v.brand.toLowerCase().includes('lexus')) console.log('[LEXUS ENT]',{k,brand:v.brand,model:v.model,bu:v.bu});
     }
     // Pre-compute combined spend/leads across ALL campaign types per date|brand|model
     const combMap={};
