@@ -216,14 +216,26 @@ tfoot td.comb{background:rgba(240,253,244,.5)}
 #dailySection{display:block}
 #demandSection{display:none}
 #campaignSection{display:none}
-tr.ca-model-row td{background:var(--surface-alt,#f8fafc);font-weight:700;cursor:pointer}
-tr.ca-model-row:hover td{background:var(--hover,#f1f5f9)}
-tr.ca-ct-row td{background:var(--surface);font-weight:600;cursor:pointer}
-tr.ca-ct-row:hover td{filter:brightness(.97)}
-tr.ca-ct-row td:first-child{padding-left:22px}
-tr.ca-date-row td{font-size:12px;font-weight:400}
-tr.ca-date-row td:first-child{padding-left:42px}
+tr.ca-model-row td{background:#1e293b;color:#f1f5f9;font-weight:700;font-size:13px;cursor:pointer;border-bottom:2px solid #334155}
+tr.ca-model-row:hover td{background:#273448}
+tr.ca-model-row td.ca-num{color:#e2e8f0;text-align:right}
+tr.ca-ct-row td{background:var(--surface);font-weight:600;font-size:12.5px;cursor:pointer;border-left:3px solid transparent}
+tr.ca-ct-row:hover td{background:var(--surface-alt,#f8fafc)}
+tr.ca-ct-row td:first-child{padding-left:28px}
+tr.ca-ct-row.ct-aw{border-left-color:var(--aw,#2563eb)}
+tr.ca-ct-row.ct-fb{border-left-color:var(--fb,#f97316)}
+tr.ca-ct-row.ct-ctwa{border-left-color:var(--ctwa,#7c3aed)}
+tr.ca-ct-row.ct-other{border-left-color:#94a3b8}
+tr.ca-date-row td{font-size:12px;font-weight:400;color:var(--text2,#64748b)}
+tr.ca-date-row td:first-child{padding-left:48px;color:var(--text2,#64748b)}
+tr.ca-date-row td.ca-num{color:var(--text1,#1e293b);text-align:right}
+tr.ca-date-row:hover td{background:var(--surface-alt,#f8fafc)}
 tr.ca-date-row.hidden,tr.ca-ct-row.hidden{display:none}
+.ca-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;vertical-align:middle;margin-left:6px}
+.ca-badge-aw{background:#eff6ff;color:#2563eb}
+.ca-badge-fb{background:#fff7ed;color:#ea6b09}
+.ca-badge-ctwa{background:#f5f3ff;color:#7c3aed}
+.ca-badge-other{background:#f1f5f9;color:#64748b}
 
 /* ── HIERARCHICAL TABLE ── */
 .hier-table{width:100%;border-collapse:collapse;font-size:12px}
@@ -818,7 +830,8 @@ async function loadData(){
     _ctRows=[];
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand.toLowerCase()}|${v.model.toLowerCase()}`;
-      const tleads=trigMap[`${ck}|${v.bu}`]||0;
+      let buKey=v.bu; if(/^ms_?fb$/i.test(buKey)) buKey='MS-FB';
+      const tleads=trigMap[`${ck}|${buKey}`]||0;
       _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads,tleads});
     }
     // Aggregate spend/leads per channel (Adwords / MS-FB / CTWA) — lowercase keys
@@ -1004,6 +1017,14 @@ function toggleModels(bk){
   if(icon) icon.textContent=hidden?'▼ ':'▶ ';
 }
 
+function caBuClass(ct){
+  const g=getBuGroup(ct);
+  if(g==='Adwords') return 'aw';
+  if(g==='MS-FB') return 'fb';
+  const l=ct.toLowerCase();
+  if(l==='ctwa'||l.includes('whatsapp')) return 'ctwa';
+  return 'other';
+}
 function renderCampaign(){
   const cont=document.getElementById('campaignContainer');
   if(!_ctRows.length){ cont.innerHTML='<div class="empty">No data loaded.</div>'; return; }
@@ -1032,54 +1053,75 @@ function renderCampaign(){
   const models=Object.values(modelMap).sort((a,b)=>b.spends-a.spends||a.model.localeCompare(b.model));
   document.getElementById('caRowCount').textContent=`${models.length} models`;
   const fmtC2=(s,l)=>l>0?'₹'+Math.round(s/l).toLocaleString('en-IN'):'—';
-  let h='<table><thead><tr>';
-  h+='<th class="left" style="min-width:220px">Model / Campaign Type / Date</th>';
-  h+='<th class="td-num">Spends</th><th class="td-num">Leads</th><th class="td-num">TLeads</th><th class="td-num">CPL</th><th class="td-num">TCPL</th>';
-  h+='</tr></thead><tbody>';
+  const N=(v,cls='')=>v?`<td class="ca-num${cls?` ${cls}`:''}">${v}</td>`:`<td class="ca-num${cls?` ${cls}`:''}">—</td>`;
+  let h=`<table style="width:100%;border-collapse:collapse">
+<thead>
+<tr style="background:#0f172a;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.06em">
+  <th class="left" style="padding:10px 16px;font-weight:600;min-width:260px">Model / Campaign Type / Date</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600">Spends</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600">Leads</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600">TLeads</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600">CPL</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600">TCPL</th>
+</tr>
+</thead><tbody>`;
   const tot={s:0,l:0,t:0};
-  for(const m of models){
+  models.forEach((m,mi)=>{
     tot.s+=m.spends; tot.l+=m.leads; tot.t+=m.tleads;
-    const mk=escH(m.model).replace(/'/g,"\\'");
-    const ctList=Object.values(m.cts);
-    const icon=ctList.length?'▶ ':'';
-    h+=`<tr class="ca-model-row" onclick="toggleCaModel('${mk}')" data-mk="${escH(m.model)}">`;
-    h+=`<td><span class="expand-icon" id="ca-ei-${mk}">${icon}</span>${escH(m.model)}</td>`;
-    h+=`<td class="td-num">${fmtNum(m.spends)}</td><td class="td-num">${fmtL(m.leads)}</td><td class="td-num">${m.tleads>0?fmtL(m.tleads):''}</td><td class="td-num">${fmtC2(m.spends,m.leads)}</td><td class="td-num">${m.tleads>0?fmtC2(m.spends,m.tleads):''}</td></tr>`;
-    for(const c of ctList.sort((a,b)=>b.spends-a.spends)){
-      const ck=`${mk}||${escH(c.ct).replace(/'/g,"\\'")}`;
-      const dateList=Object.values(c.dates);
-      const icon2=dateList.length?'▶ ':'';
-      h+=`<tr class="ca-ct-row hidden" data-mk="${escH(m.model)}" data-ck="${escH(m.model+'||'+c.ct)}" onclick="toggleCaCT('${ck}')">`;
-      h+=`<td><span class="expand-icon" id="ca-ei-${ck}">${icon2}</span>${escH(c.ct)}</td>`;
-      h+=`<td class="td-num">${fmtNum(c.spends)}</td><td class="td-num">${fmtL(c.leads)}</td><td class="td-num">${c.tleads>0?fmtL(c.tleads):''}</td><td class="td-num">${fmtC2(c.spends,c.leads)}</td><td class="td-num">${c.tleads>0?fmtC2(c.spends,c.tleads):''}</td></tr>`;
-      for(const d of dateList.sort((a,b)=>a.date.localeCompare(b.date))){
-        h+=`<tr class="ca-date-row hidden" data-ck="${escH(m.model+'||'+c.ct)}">`;
-        h+=`<td>${fmtDate(d.date)}</td>`;
-        h+=`<td class="td-num">${fmtNum(d.spends)}</td><td class="td-num">${fmtL(d.leads)}</td><td class="td-num">${d.tleads>0?fmtL(d.tleads):''}</td><td class="td-num">${fmtC2(d.spends,d.leads)}</td><td class="td-num">${d.tleads>0?fmtC2(d.spends,d.tleads):''}</td></tr>`;
+    const ctList=Object.values(m.cts).sort((a,b)=>b.spends-a.spends);
+    h+=`<tr class="ca-model-row" onclick="toggleCaModel(${mi})" data-mi="${mi}">
+  <td style="padding:11px 16px"><span class="expand-icon" id="ca-ei-m${mi}">▶ </span>${escH(m.model)}<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:8px">${ctList.length} campaign type${ctList.length!==1?'s':''}</span></td>
+  <td class="ca-num">${fmtNum(m.spends)}</td><td class="ca-num">${fmtL(m.leads)}</td>
+  <td class="ca-num">${m.tleads>0?fmtL(m.tleads):'—'}</td>
+  <td class="ca-num">${fmtC2(m.spends,m.leads)}</td><td class="ca-num">${m.tleads>0?fmtC2(m.spends,m.tleads):'—'}</td>
+</tr>`;
+    ctList.forEach((c,ci)=>{
+      const cls=caBuClass(c.ct);
+      const dateList=Object.values(c.dates).sort((a,b)=>a.date.localeCompare(b.date));
+      const ckId=`${mi}-${ci}`;
+      h+=`<tr class="ca-ct-row ct-${cls} hidden" data-mi="${mi}" data-ck="${ckId}" onclick="toggleCaCT('${ckId}')">
+  <td style="padding:9px 16px 9px 28px"><span class="expand-icon" id="ca-ei-c${ckId}">▶ </span><span class="ca-badge ca-badge-${cls}">${escH(c.ct)}</span></td>
+  <td class="ca-num">${fmtNum(c.spends)}</td><td class="ca-num">${fmtL(c.leads)}</td>
+  <td class="ca-num">${c.tleads>0?fmtL(c.tleads):'—'}</td>
+  <td class="ca-num">${fmtC2(c.spends,c.leads)}</td><td class="ca-num">${c.tleads>0?fmtC2(c.spends,c.tleads):'—'}</td>
+</tr>`;
+      for(const d of dateList){
+        h+=`<tr class="ca-date-row hidden" data-ck="${ckId}">
+  <td style="padding:7px 16px 7px 48px;color:var(--text2,#64748b)">${fmtDate(d.date)}</td>
+  <td class="ca-num" style="color:var(--text1)">${fmtNum(d.spends)}</td>
+  <td class="ca-num" style="color:var(--text1)">${fmtL(d.leads)}</td>
+  <td class="ca-num" style="color:var(--text1)">${d.tleads>0?fmtL(d.tleads):'—'}</td>
+  <td class="ca-num" style="color:var(--text1)">${fmtC2(d.spends,d.leads)}</td>
+  <td class="ca-num" style="color:var(--text1)">${d.tleads>0?fmtC2(d.spends,d.tleads):'—'}</td>
+</tr>`;
       }
-    }
-  }
-  h+=`</tbody><tfoot><tr><td class="left" style="font-weight:700">TOTAL</td>`;
-  h+=`<td class="td-num">${fmtNum(tot.s)}</td><td class="td-num">${fmtL(tot.l)}</td><td class="td-num">${fmtL(tot.t)}</td><td class="td-num">${fmtC2(tot.s,tot.l)}</td><td class="td-num">${fmtC2(tot.s,tot.t)}</td>`;
-  h+='</tr></tfoot></table>';
+    });
+  });
+  h+=`</tbody><tfoot><tr style="background:var(--surface-alt,#f8fafc);font-weight:700;border-top:2px solid var(--border)">
+  <td style="padding:10px 16px">TOTAL</td>
+  <td class="ca-num">${fmtNum(tot.s)}</td><td class="ca-num">${fmtL(tot.l)}</td>
+  <td class="ca-num">${fmtL(tot.t)}</td>
+  <td class="ca-num">${fmtC2(tot.s,tot.l)}</td><td class="ca-num">${fmtC2(tot.s,tot.t)}</td>
+</tr></tfoot></table>`;
   cont.innerHTML=h;
 }
-function toggleCaModel(mk){
-  const rows=document.querySelectorAll(`tr.ca-ct-row[data-mk="${mk}"]`);
-  const icon=document.getElementById(`ca-ei-${mk}`);
+function toggleCaModel(mi){
+  const rows=document.querySelectorAll(`tr.ca-ct-row[data-mi="${mi}"]`);
+  const icon=document.getElementById(`ca-ei-m${mi}`);
   const hidden=rows[0]&&rows[0].classList.contains('hidden');
-  // collapse all date rows under this model when collapsing
-  if(!hidden) document.querySelectorAll(`tr.ca-date-row[data-ck^="${mk}||"]`).forEach(r=>r.classList.add('hidden'));
-  rows.forEach(r=>{
-    r.classList.toggle('hidden',!hidden);
-    // reset CT expand icons when collapsing
-    if(!hidden){ const ck=r.dataset.ck, ei=document.getElementById(`ca-ei-${ck}`); if(ei) ei.textContent='▶ '; }
-  });
+  if(!hidden){
+    document.querySelectorAll(`tr.ca-ct-row[data-mi="${mi}"]`).forEach(r=>{
+      const ck=r.dataset.ck;
+      document.querySelectorAll(`tr.ca-date-row[data-ck="${ck}"]`).forEach(d=>d.classList.add('hidden'));
+      const ei=document.getElementById(`ca-ei-c${ck}`); if(ei) ei.textContent='▶ ';
+    });
+  }
+  rows.forEach(r=>r.classList.toggle('hidden',!hidden));
   if(icon) icon.textContent=hidden?'▼ ':'▶ ';
 }
 function toggleCaCT(ck){
   const rows=document.querySelectorAll(`tr.ca-date-row[data-ck="${ck}"]`);
-  const icon=document.getElementById(`ca-ei-${ck}`);
+  const icon=document.getElementById(`ca-ei-c${ck}`);
   const hidden=rows[0]&&rows[0].classList.contains('hidden');
   rows.forEach(r=>r.classList.toggle('hidden',!hidden));
   if(icon) icon.textContent=hidden?'▼ ':'▶ ';
