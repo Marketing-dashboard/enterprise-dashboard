@@ -660,29 +660,40 @@ const RATE_CHS  = ['Adwords','MS-FB','CTWA'];
 
 async function loadRates(){
   try{
+    // 1. Load base values from GSheet
     const resp=await fetch(RATES_URL+'&_='+Date.now());
     const text=await resp.text();
     const rows=parseCSV(text);
-    if(!rows.length) return;
-    const hdr=rows[0].map(h=>h.toLowerCase().replace(/[\s_]/g,''));
-    const bi=hdr.indexOf('brand'), mi2=hdr.indexOf('model');
-    const chi=hdr.findIndex(h=>h==='channel');
-    const vi=hdr.findIndex(h=>h.includes('validation'));
-    const si=hdr.findIndex(h=>h.includes('soldcpl')||h.includes('sold'));
     _rates={soldCPL:{},validation:{}};
-    for(let i=1;i<rows.length;i++){
-      const r=rows[i];
-      const brand=(r[bi]||'').trim(), model=(r[mi2]||'').trim();
-      if(!brand||!model) continue;
-      let ch=(r[chi]||'').trim();
-      if(/^ms_?fb$/i.test(ch)) ch='MS-FB';
-      else if(/^adwords$/i.test(ch)||ch.toLowerCase()==='google') ch='Adwords';
-      else if(/^ctwa$/i.test(ch)||ch.toLowerCase().includes('whatsapp')) ch='CTWA';
-      const key=`${brand}||${model}||${ch}`;
-      const valStr=(r[vi]||'').replace('%','').trim();
-      const val=parseFloat(valStr); if(!isNaN(val)&&val>=0) _rates.validation[key]=val;
-      const cpl=parseFloat((r[si]||'').replace(/,/g,'')); if(!isNaN(cpl)&&cpl>0) _rates.soldCPL[key]=cpl;
+    if(rows.length){
+      const hdr=rows[0].map(h=>h.toLowerCase().replace(/[\s_]/g,''));
+      const bi=hdr.indexOf('brand'), mi2=hdr.indexOf('model');
+      const chi=hdr.findIndex(h=>h==='channel');
+      const vi=hdr.findIndex(h=>h.includes('validation'));
+      const si=hdr.findIndex(h=>h.includes('soldcpl')||h.includes('sold'));
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i];
+        const brand=(r[bi]||'').trim(), model=(r[mi2]||'').trim();
+        if(!brand||!model) continue;
+        let ch=(r[chi]||'').trim();
+        if(/^ms_?fb$/i.test(ch)) ch='MS-FB';
+        else if(/^adwords$/i.test(ch)||ch.toLowerCase()==='google') ch='Adwords';
+        else if(/^ctwa$/i.test(ch)||ch.toLowerCase().includes('whatsapp')) ch='CTWA';
+        const key=`${brand}||${model}||${ch}`;
+        const valStr=(r[vi]||'').replace('%','').trim();
+        const val=parseFloat(valStr); if(!isNaN(val)&&val>=0) _rates.validation[key]=val;
+        const cpl=parseFloat((r[si]||'').replace(/,/g,'')); if(!isNaN(cpl)&&cpl>0) _rates.soldCPL[key]=cpl;
+      }
     }
+    // 2. Merge Firestore overrides on top (admin edits win over GSheet)
+    try{
+      const snap=await RATES_DOC().get();
+      if(snap.exists){
+        const d=snap.data();
+        Object.assign(_rates.soldCPL, d.soldCPL||{});
+        Object.assign(_rates.validation, d.validation||{});
+      }
+    }catch(_){}
   }catch(e){ console.warn('Rates load failed',e); }
 }
 
@@ -704,48 +715,32 @@ function applyRatesToRows(){
   }
 }
 
-let _ratesMonth='';
 function loadRatesTab(){
   const body=document.getElementById('adminBody');
-  const months=[...new Set(_rows.map(r=>r.month))].filter(Boolean).sort();
-  const now=new Date();
-  const defMo=`${_MO_NAMES[now.getMonth()+1]}'${String(now.getFullYear()).slice(2)}`;
-  if(!_ratesMonth) _ratesMonth=months.includes(defMo)?defMo:(months[months.length-1]||defMo);
   const bms=[...new Set(_rows.map(r=>`${r.brand}||${r.model}`))].sort();
 
-  let h=`<div class="rates-wrap">`;
-  // ── Sold CPL ──
-  h+=`<div class="rates-section-hd">💰 Sold CPL (fixed · per model per channel)</div>`;
-  h+=`<table class="rates-tbl"><tr><th>Brand / Model</th>${RATE_CHS.map(c=>`<th>${c} CPL (₹)</th>`).join('')}</tr>`;
-  for(const bm of bms){
-    const [br,mo]=bm.split('||');
-    h+=`<tr><td><span style="font-weight:600">${escH(mo)}</span><div style="font-size:10px;color:var(--text3)">${escH(br)}</div></td>`;
-    for(const ch of RATE_CHS){
-      const v=_rates.soldCPL[`${bm}||${ch}`]||'';
-      h+=`<td><input type="number" min="0" data-rtype="cpl" data-rkey="${bm}||${ch}" value="${v}" placeholder="—"></td>`;
+  const mkTbl=(title,colSuffix,rtype,min,max,step,getVal)=>{
+    let t=`<div class="rates-section-hd">${title}</div>`;
+    t+=`<table class="rates-tbl"><thead><tr><th style="text-align:left">Brand / Model</th>`;
+    t+=RATE_CHS.map(c=>`<th>${c}<br><small style="font-weight:400;opacity:.7">${colSuffix}</small></th>`).join('');
+    t+=`</tr></thead><tbody>`;
+    for(const bm of bms){
+      const [brand,model]=bm.split('||');
+      t+=`<tr><td><span style="font-weight:600">${escH(model)}</span><div style="font-size:10px;color:var(--text3)">${escH(brand)}</div></td>`;
+      for(const ch of RATE_CHS){
+        const k=`${bm}||${ch}`, v=getVal(k);
+        t+=`<td><input type="number" min="${min}" ${max!==null?`max="${max}"`:''}step="${step}" data-rtype="${rtype}" data-rkey="${k}" value="${v!==''?v:''}" placeholder="—"></td>`;
+      }
+      t+=`</tr>`;
     }
-    h+=`</tr>`;
-  }
-  h+=`</table>`;
+    t+=`</tbody></table>`;
+    return t;
+  };
 
-  // ── Validation % ──
-  h+=`<div class="rates-section-hd">✅ Validation % (per month)</div>`;
-  h+=`<div class="rates-month-row"><label>Month:</label>`;
-  h+=`<select onchange="_ratesMonth=this.value;loadRatesTab()">`;
-  h+=months.map(m=>`<option value="${m}"${m===_ratesMonth?' selected':''}>${m}</option>`).join('');
-  h+=`</select></div>`;
-  h+=`<table class="rates-tbl"><tr><th>Brand / Model</th>${RATE_CHS.map(c=>`<th>${c} Val %</th>`).join('')}</tr>`;
-  for(const bm of bms){
-    const [br,mo]=bm.split('||');
-    h+=`<tr><td><span style="font-weight:600">${escH(mo)}</span><div style="font-size:10px;color:var(--text3)">${escH(br)}</div></td>`;
-    for(const ch of RATE_CHS){
-      const v=_rates.validation[`${bm}||${ch}||${_ratesMonth}`];
-      h+=`<td><input type="number" min="0" max="100" step="0.1" data-rtype="val" data-rkey="${bm}||${ch}||${_ratesMonth}" value="${v!==undefined?v:''}" placeholder="—"></td>`;
-    }
-    h+=`</tr>`;
-  }
-  h+=`</table>`;
-  h+=`<div style="display:flex;align-items:center"><button class="rates-save-btn" onclick="saveRates()">💾 Save</button><span class="rates-save-msg" id="ratesSaveMsg" style="display:none">✓ Saved</span></div>`;
+  let h=`<div class="rates-wrap">`;
+  h+=mkTbl('💰 Sold CPL — per model · per channel','₹ CPL','cpl',0,null,1,k=>_rates.soldCPL[k]||'');
+  h+=mkTbl('✅ Validation % — per model · per channel','Val %','val',0,100,0.1,k=>_rates.validation[k]!==undefined?_rates.validation[k]:'');
+  h+=`<div style="display:flex;align-items:center;margin-top:14px"><button class="rates-save-btn" onclick="saveRates()">💾 Save &amp; Recalculate</button><span class="rates-save-msg" id="ratesSaveMsg" style="display:none">✓ Saved</span></div>`;
   h+=`</div>`;
   body.innerHTML=h;
 }
