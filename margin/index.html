@@ -1548,6 +1548,20 @@ const MOM_KPIS=[
 ];
 let _momSelKPIs=new Set(['spends']);
 
+// Strip Rs symbol, commas, % before parsing — History sheet has values like Rs.17,599 or 58%
+function pnH(v){ return parseFloat(String(v).replace(/[\u20b9%,\s]/g,'').replace(/^Rs\.?/i,''))||0; }
+
+// Parse month label like "Jul'26" or "Jul-26"
+const MO_ORD={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+function parseMoLabel(s){ const p=s.split(/['\u2019\-]/); return {mo:MO_ORD[p[0]]||0,yr:parseInt(p[1]||0)}; }
+function sortMoLabels(a,b){ const pa=parseMoLabel(a),pb=parseMoLabel(b); return pa.yr!==pb.yr?pa.yr-pb.yr:pa.mo-pb.mo; }
+
+// Current month label e.g. "Aug'26"
+function curMonthLabel(){
+  const d=new Date(),MNS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return MNS[d.getMonth()]+"'"+(d.getFullYear()%100);
+}
+
 function getMOMVal(kd, r){
   if(!r) return 0;
   if(kd.derived){
@@ -1566,10 +1580,6 @@ function getMOMFmt(kd, r){
 }
 
 async function loadHistory(){
-  if(HISTORY_URL.includes('HISTORY_GID_HERE')){
-    document.getElementById('momTableWrap').innerHTML='<div class="empty" style="padding:40px">Please update HISTORY_URL in the dashboard code with the GID for the History sheet.</div>';
-    return;
-  }
   try{
     const resp=await fetch(HISTORY_URL+'&t='+Date.now());
     const text=await resp.text();
@@ -1608,6 +1618,12 @@ function populateMOMFilters(){
     if(!modelsByBrand[b]) modelsByBrand[b]=new Set();
     modelsByBrand[b].add(m);
   }
+  for(const r of _rows){
+    if(!r.brand||!r.model) continue;
+    brands.add(r.brand);
+    if(!modelsByBrand[r.brand]) modelsByBrand[r.brand]=new Set();
+    modelsByBrand[r.brand].add(r.model);
+  }
   const bSel=document.getElementById('mom-brand');
   const curB=bSel.value;
   bSel.innerHTML='<option value="">All Brands</option>'+[...brands].sort().map(b=>`<option${b===curB?' selected':''}>${escH(b)}</option>`).join('');
@@ -1625,41 +1641,52 @@ function onMOMBrandChange(){
 }
 
 function renderMOM(){
-  if(!_histRows.length){
-    document.getElementById('momChartSub').textContent='';
-    document.getElementById('momTableWrap').innerHTML='<div class="empty">No history data loaded.</div>';
-    return;
-  }
   const brand=document.getElementById('mom-brand').value;
   const model=document.getElementById('mom-model').value;
 
-  // Aggregate by month|brand|model
+  // Aggregate history rows by month|brand|model
   const agg={};
   const monthSet=new Set();
-  const MO_ORD={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
 
   for(const r of _histRows){
     const b=(r['Brand']||r['brand']||'').trim();
     const m=(r['Model']||r['model']||'').trim();
-    let mo=(r['Month']||r['month']||r['MONTH']||'').trim();
+    const mo=(r['Month']||r['month']||r['MONTH']||'').trim();
     if(!b||!m||!mo) continue;
     if(brand&&b!==brand) continue;
     if(model&&m!==model) continue;
     monthSet.add(mo);
     const k=mo+'|'+b+'|'+m;
     if(!agg[k]) agg[k]={month:mo,brand:b,model:m,spends:0,leads:0,tleads:0,revenue:0};
-    agg[k].spends  +=pn(r['Spends']  ||r['spends']  ||r['Cost']   ||r['cost']   ||0);
-    agg[k].leads   +=pn(r['Leads']   ||r['leads']   ||0);
-    agg[k].tleads  +=pn(r['TLeads']  ||r['tleads']  ||r['Triggered Leads']||r['triggered_leads']||0);
-    agg[k].revenue +=pn(r['Revenue'] ||r['revenue'] ||0);
+    agg[k].spends  +=pnH(r['Spends']  ||r['spends']  ||r['Cost']||0);
+    agg[k].leads   +=pnH(r['Leads']   ||r['leads']   ||0);
+    agg[k].tleads  +=pnH(r['Triggered MS']||r['TLeads']||r['tleads']||r['Triggered Leads']||0);
+    agg[k].revenue +=pnH(r['Revenue'] ||r['revenue'] ||0);
   }
 
-  const sortedMonths=[...monthSet].sort((a,b)=>{
-    const pa=a.split('-'), pb=b.split('-');
-    const ya=parseInt(pa[1]||0), yb=parseInt(pb[1]||0);
-    const ma=MO_ORD[pa[0]]||0, mb=MO_ORD[pb[0]]||0;
-    return ya!==yb?ya-yb:ma-mb;
-  });
+  // Add current month from live _rows
+  const curMo=curMonthLabel();
+  for(const r of _rows){
+    const b=r.brand, m=r.model;
+    if(!b||!m) continue;
+    if(brand&&b!==brand) continue;
+    if(model&&m!==model) continue;
+    monthSet.add(curMo);
+    const k=curMo+'|'+b+'|'+m;
+    if(!agg[k]) agg[k]={month:curMo,brand:b,model:m,spends:0,leads:0,tleads:0,revenue:0};
+    agg[k].spends  +=(r.combSpend||0);
+    agg[k].leads   +=(r.combLeads||0);
+    agg[k].tleads  +=(r.combTrig||0);
+    agg[k].revenue +=(r.combRev||0);
+  }
+
+  if(!Object.keys(agg).length){
+    document.getElementById('momChartSub').textContent='';
+    document.getElementById('momTableWrap').innerHTML='<div class="empty">No data loaded yet.</div>';
+    return;
+  }
+
+  const sortedMonths=[...monthSet].sort(sortMoLabels);
 
   // Group by brand|model series
   const seriesMap={};
@@ -1672,7 +1699,7 @@ function renderMOM(){
   const activKPIs=MOM_KPIS.filter(k=>_momSelKPIs.has(k.key));
 
   document.getElementById('momChartSub').textContent=
-    series.length+' model'+(series.length!==1?'s':'')+' · '+sortedMonths.join(', ');
+    series.length+' model'+(series.length!==1?'s':'')+' \u00b7 '+sortedMonths.join(', ');
 
   // Chart
   const PALETTE=['#4f6ef7','#f97316','#7c3aed','#16a34a','#dc2626','#0891b2','#ca8a04','#be185d','#065f46','#92400e'];
@@ -1681,7 +1708,7 @@ function renderMOM(){
     activKPIs.forEach((kd,ki)=>{
       const ci=(si*Math.max(activKPIs.length,1)+ki)%PALETTE.length;
       const col=PALETTE[ci];
-      const lbl=activKPIs.length>1?s.model+' – '+kd.label:s.brand+' – '+s.model;
+      const lbl=activKPIs.length>1?s.model+' \u2013 '+kd.label:s.brand+' \u2013 '+s.model;
       datasets.push({
         label:lbl,
         data:sortedMonths.map(mo=>{ const v=getMOMVal(kd,s.data[mo]); return v; }),
@@ -1726,9 +1753,8 @@ function renderMOM(){
   });
   h+='</tr></thead><tbody>';
 
-  // Totals accumulator (non-derived only)
   const totals={};
-  sortedMonths.forEach(mo=>{ totals[mo]={}; activKPIs.forEach(kd=>{ if(!kd.derived) totals[mo][kd.key]=0; }); });
+  sortedMonths.forEach(mo=>{ totals[mo]={spends:0,leads:0,tleads:0,revenue:0}; });
 
   series.forEach(s=>{
     h+='<tr><td style="font-weight:600">'+escH(s.brand)+'</td><td>'+escH(s.model)+'</td>';
@@ -1744,7 +1770,9 @@ function renderMOM(){
           const pv=getMOMVal(kd,s.data[prevMo]||emptyRow);
           if(pv!==null&&pv!==0) cls+=val>pv?' up':val<pv?' dn':'';
         }
-        if(!kd.derived&&val!==null&&row) totals[mo][kd.key]=(totals[mo][kd.key]||0)+val;
+        if(!kd.derived&&val!==null&&row){
+          totals[mo][kd.key]=(totals[mo][kd.key]||0)+val;
+        }
         h+='<td class="'+cls+'">'+disp+'</td>';
       });
     });
@@ -1753,10 +1781,13 @@ function renderMOM(){
 
   h+='</tbody><tfoot><tr><td colspan="2" style="text-align:left">TOTAL</td>';
   sortedMonths.forEach(mo=>{
+    const t=totals[mo];
     activKPIs.forEach(kd=>{
-      if(kd.derived){ h+='<td>--</td>'; return; }
-      const v=totals[mo][kd.key]||0;
-      h+='<td>'+( v>0?kd.fmt(v):'--' )+'</td>';
+      if(kd.key==='cpl')    { h+='<td class="num">'+(t.leads>0?'Rs.'+Math.round(t.spends/t.leads).toLocaleString('en-IN'):'--')+'</td>'; return; }
+      if(kd.key==='tcpl')   { h+='<td class="num">'+(t.tleads>0?'Rs.'+Math.round(t.spends/t.tleads).toLocaleString('en-IN'):'--')+'</td>'; return; }
+      if(kd.key==='margin') { h+='<td class="num">'+(t.revenue>0?((1-t.spends/t.revenue)*100).toFixed(1)+'%':'--')+'</td>'; return; }
+      const v=t[kd.key]||0;
+      h+='<td class="num">'+( v>0?kd.fmt(v):'--' )+'</td>';
     });
   });
   h+='</tr></tfoot></table>';
