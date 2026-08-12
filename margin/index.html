@@ -675,7 +675,8 @@ function applyRatesToRows(){
     const ctV=(_rates.validation[`${bm}||CTWA`]??0)/100;
     const awC=_rates.soldCPL[`${bm}||Adwords`]||0;
     const fbC=_rates.soldCPL[`${bm}||MS-FB`]||0;
-    const ctC=_rates.soldCPL[`${bm}||CTWA`]||0;
+    const isHmsiBigwing=r.brand.toLowerCase().includes('hmsi')&&r.model.toLowerCase().includes('bigwing');
+    const ctC=_rates.soldCPL[`${bm}||CTWA`]||(isHmsiBigwing?fbC:0);
     r.awPVL =r.awTrig *awV; r.awRev =r.awPVL *awC; r.awMgn =r.awRev -r.awSpend;
     r.fbPVL =r.fbTrig *fbV; r.fbRev =r.fbPVL *fbC; r.fbMgn =r.fbRev -r.fbSpend;
     r.ctwaPVL=r.ctwaTrig*ctV; r.ctwaRev=r.ctwaPVL*ctC; r.ctwaMgn=r.ctwaRev-r.ctwaSpend;
@@ -852,8 +853,7 @@ async function loadData(){
       let src=(g('finalsource')||g('final_source')||g('BUType')||g('source')).trim();
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
-      const useListId=['jlr','lexus'].some(b=>fb.toLowerCase().includes(b)) ||
-        (['citroen','citroën'].some(b=>fb.toLowerCase().includes(b)) && src==='MS-FB');
+      const useListId=['jlr','lexus','citroen','citroën'].some(b=>fb.toLowerCase().includes(b));
       const trig=pn(g('Triggered')||g('triggered'))+(useListId?pn(g('TriggeredinListID')||g('Triggered_in_List_ID')||g('triggeredinlistid')):0);
       let ct=hasTrigCTCol?(g('CampaignType')||g('campaigntype')||src).trim()||src:src;
       if(/^ms_?fb$/i.test(ct)) ct='MS-FB';
