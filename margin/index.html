@@ -660,41 +660,14 @@ const RATE_CHS  = ['Adwords','MS-FB','CTWA'];
 
 async function loadRates(){
   try{
-    // 1. Load base values from GSheet
-    const resp=await fetch(RATES_URL+'&_='+Date.now());
-    const text=await resp.text();
-    const rows=parseCSV(text);
-    _rates={soldCPL:{},validation:{}};
-    if(rows.length){
-      const hdr=rows[0].map(h=>h.toLowerCase().replace(/[\s_]/g,''));
-      const bi=hdr.indexOf('brand'), mi2=hdr.indexOf('model');
-      const chi=hdr.findIndex(h=>h==='channel');
-      const vi=hdr.findIndex(h=>h.includes('validation'));
-      const si=hdr.findIndex(h=>h.includes('soldcpl')||h.includes('sold'));
-      for(let i=1;i<rows.length;i++){
-        const r=rows[i];
-        const brand=(r[bi]||'').trim(), model=(r[mi2]||'').trim();
-        if(!brand||!model) continue;
-        let ch=(r[chi]||'').trim();
-        if(/^ms_?fb$/i.test(ch)) ch='MS-FB';
-        else if(/^adwords$/i.test(ch)||ch.toLowerCase()==='google') ch='Adwords';
-        else if(/^ctwa$/i.test(ch)||ch.toLowerCase().includes('whatsapp')) ch='CTWA';
-        const key=`${brand}||${model}||${ch}`;
-        const valStr=(r[vi]||'').replace('%','').trim();
-        const val=parseFloat(valStr); if(!isNaN(val)&&val>=0) _rates.validation[key]=val;
-        const cpl=parseFloat((r[si]||'').replace(/,/g,'')); if(!isNaN(cpl)&&cpl>0) _rates.soldCPL[key]=cpl;
-      }
+    const snap=await RATES_DOC().get();
+    if(snap.exists){
+      const d=snap.data();
+      _rates={soldCPL:d.soldCPL||{},validation:d.validation||{}};
+    } else {
+      _rates={soldCPL:{},validation:{}};
     }
-    // 2. Merge Firestore overrides on top (admin edits win over GSheet)
-    try{
-      const snap=await RATES_DOC().get();
-      if(snap.exists){
-        const d=snap.data();
-        Object.assign(_rates.soldCPL, d.soldCPL||{});
-        Object.assign(_rates.validation, d.validation||{});
-      }
-    }catch(_){}
-  }catch(e){ console.warn('Rates load failed',e); }
+  }catch(e){ console.warn('Rates load failed',e); _rates={soldCPL:{},validation:{}}; }
 }
 
 function applyRatesToRows(){
