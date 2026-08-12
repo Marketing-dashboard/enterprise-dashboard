@@ -945,17 +945,11 @@ async function loadData(){
         ctwaSpend:ctwa.spends,ctwaLeads:ctwa.leads,ctwaTrig:ctwaTrigMap[ck]||0,
         combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
     }
-    // Add trigger-only daily rows for Citroen (days with triggers but no spend in Enterprise_Raw)
-    const citroenBrands=new Set();
-    for(const bmk of Object.keys(modelDispMap)){
-      const {brand}=modelDispMap[bmk];
-      if(/citro[eë]n/i.test(brand)) citroenBrands.add(bmk);
-    }
+    // Add trigger-only daily rows for ALL brands (days with triggers but no spend in Enterprise_Raw)
     for(const [ck,ct] of Object.entries(combTrigMap)){
       if(comboSet.has(ck)||!ct) continue;
       const p=ck.split('|'), date=p[0], brandL=p[1], modelL=p[2];
       const bmk=`${brandL}|${modelL}`;
-      if(!citroenBrands.has(bmk)) continue;
       const disp=modelDispMap[bmk]; if(!disp) continue;
       const seg=refSeg[bmk]||brandRefSeg[brandL]||segMap[ck]||'';
       _rows.push({date,brand:disp.brand,model:disp.model,month:monthLabel(date),segment:seg,
