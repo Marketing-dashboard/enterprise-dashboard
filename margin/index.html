@@ -1214,7 +1214,6 @@ function renderCampaign(){
 <tr style="background:#0f172a;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.06em">
   <th class="left" style="padding:10px 16px;font-weight:600;min-width:260px">Model / Campaign Type / Date</th>
   <th style="padding:10px 14px;text-align:right;font-weight:600">Spends</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600">Spend%</th>
   <th style="padding:10px 14px;text-align:right;font-weight:600">Leads</th>
   <th style="padding:10px 14px;text-align:right;font-weight:600">TLeads</th>
   <th style="padding:10px 14px;text-align:right;font-weight:600">CPL</th>
@@ -1222,13 +1221,13 @@ function renderCampaign(){
 </tr>
 </thead><tbody>`;
   const tot={s:0,l:0,t:0};
-  const fmtSpendPct=(num,denom)=>denom>0?`<span style="color:var(--text2);font-size:11px">${(num/denom*100).toFixed(1)}%</span>`:'';
+  const fmtSpendPct=(num,denom)=>denom>0?`<span style="color:var(--text3);font-size:10px;margin-left:4px;font-weight:400">${(num/denom*100).toFixed(1)}%</span>`:'';
   models.forEach((m,mi)=>{
     tot.s+=m.spends; tot.l+=m.leads; tot.t+=m.tleads;
     const ctList=Object.values(m.cts).sort((a,b)=>b.spends-a.spends);
     h+=`<tr class="ca-model-row" onclick="toggleCaModel(${mi})" data-mi="${mi}">
   <td style="padding:11px 16px"><span class="expand-icon" id="ca-ei-m${mi}">▶ </span>${escH(m.model)}<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:8px">${ctList.length} campaign type${ctList.length!==1?'s':''}</span></td>
-  <td class="ca-num">${fmtNum(m.spends)}</td><td class="ca-num">—</td><td class="ca-num">${fmtL(m.leads)}</td>
+  <td class="ca-num">${fmtNum(m.spends)}</td><td class="ca-num">${fmtL(m.leads)}</td>
   <td class="ca-num">${m.tleads>0?fmtL(m.tleads):'—'}</td>
   <td class="ca-num">${fmtC2(m.spends,m.leads)}</td><td class="ca-num">${m.tleads>0?fmtC2(m.spends,m.tleads):'—'}</td>
 </tr>`;
@@ -1238,14 +1237,14 @@ function renderCampaign(){
       const ckId=`${mi}-${ci}`;
       h+=`<tr class="ca-ct-row ct-${cls} hidden" data-mi="${mi}" data-ck="${ckId}" onclick="toggleCaCT('${ckId}')">
   <td style="padding:9px 16px 9px 28px"><span class="expand-icon" id="ca-ei-c${ckId}">▶ </span><span class="ca-badge ca-badge-${cls}">${escH(c.ct)}</span></td>
-  <td class="ca-num">${fmtNum(c.spends)}</td><td class="ca-num">${fmtSpendPct(c.spends,m.spends)}</td><td class="ca-num">${fmtL(c.leads)}</td>
+  <td class="ca-num">${fmtNum(c.spends)}${fmtSpendPct(c.spends,m.spends)}</td><td class="ca-num">${fmtL(c.leads)}</td>
   <td class="ca-num">${c.tleads>0?fmtL(c.tleads):'—'}</td>
   <td class="ca-num">${fmtC2(c.spends,c.leads)}</td><td class="ca-num">${c.tleads>0?fmtC2(c.spends,c.tleads):'—'}</td>
 </tr>`;
       for(const d of dateList){
         h+=`<tr class="ca-date-row hidden" data-ck="${ckId}">
   <td style="padding:7px 16px 7px 48px;color:var(--text2,#64748b)">${fmtDate(d.date)}</td>
-  <td class="ca-num" style="color:var(--text1)">${fmtNum(d.spends)}</td><td class="ca-num"></td>
+  <td class="ca-num" style="color:var(--text1)">${fmtNum(d.spends)}</td>
   <td class="ca-num" style="color:var(--text1)">${fmtL(d.leads)}</td>
   <td class="ca-num" style="color:var(--text1)">${d.tleads>0?fmtL(d.tleads):'—'}</td>
   <td class="ca-num" style="color:var(--text1)">${fmtC2(d.spends,d.leads)}</td>
@@ -1256,7 +1255,7 @@ function renderCampaign(){
   });
   h+=`</tbody><tfoot><tr style="background:var(--surface-alt,#f8fafc);font-weight:700;border-top:2px solid var(--border)">
   <td style="padding:10px 16px">TOTAL</td>
-  <td class="ca-num">${fmtNum(tot.s)}</td><td class="ca-num" style="font-size:11px;color:var(--text2)">100%</td><td class="ca-num">${fmtL(tot.l)}</td>
+  <td class="ca-num">${fmtNum(tot.s)}</td><td class="ca-num">${fmtL(tot.l)}</td>
   <td class="ca-num">${fmtL(tot.t)}</td>
   <td class="ca-num">${fmtC2(tot.s,tot.l)}</td><td class="ca-num">${fmtC2(tot.s,tot.t)}</td>
 </tr></tfoot></table>`;
