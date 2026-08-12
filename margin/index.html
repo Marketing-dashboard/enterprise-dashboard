@@ -1037,18 +1037,39 @@ function renderCampaign(){
     return true;
   });
   if(!filtered.length){ cont.innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
-  // Build hierarchy: model → campaignType → date
+  // Recompute channel trigger maps from _trigMap (keys are already lowercase brand|model)
+  const awTM={},fbTM={},ctwaTM={};
+  for(const [k,v] of Object.entries(_trigMap)){
+    const p=k.split('|'),ck2=`${p[0]}|${p[1]}|${p[2]}`,ct=(p[3]||'').toLowerCase();
+    if(ct==='ms-fb') fbTM[ck2]=(fbTM[ck2]||0)+v;
+    else if(ct==='ctwa') ctwaTM[ck2]=(ctwaTM[ck2]||0)+v;
+    else awTM[ck2]=(awTM[ck2]||0)+v;
+  }
+  // Build hierarchy: model → channel (buGroup) → date
+  // Group by buGroup so triggers (which are tracked at channel level) map correctly.
+  // usedTrig prevents double-counting when multiple CTs share the same buGroup for a date|model.
   const modelMap={};
+  const usedTrig=new Set();
   for(const r of filtered){
-    if(!modelMap[r.model]) modelMap[r.model]={model:r.model,spends:0,leads:0,tleads:0,cts:{}};
+    const bk=r.brand.toLowerCase(),mk2=r.model.toLowerCase();
+    if(!modelMap[r.model]) modelMap[r.model]={model:r.model,spends:0,leads:0,tleads:0,channels:{}};
     const m=modelMap[r.model];
-    m.spends+=r.spends; m.leads+=r.leads; m.tleads+=r.tleads;
-    if(!m.cts[r.campaignType]) m.cts[r.campaignType]={ct:r.campaignType,spends:0,leads:0,tleads:0,dates:{}};
-    const c=m.cts[r.campaignType];
-    c.spends+=r.spends; c.leads+=r.leads; c.tleads+=r.tleads;
-    if(!c.dates[r.date]) c.dates[r.date]={date:r.date,spends:0,leads:0,tleads:0};
-    const d=c.dates[r.date];
-    d.spends+=r.spends; d.leads+=r.leads; d.tleads+=r.tleads;
+    const bg=r.buGroup||'Other';
+    if(!m.channels[bg]) m.channels[bg]={bg,spends:0,leads:0,tleads:0,dates:{}};
+    const ch=m.channels[bg];
+    const ck=`${r.date}|${bk}|${mk2}`;
+    m.spends+=r.spends; m.leads+=r.leads;
+    ch.spends+=r.spends; ch.leads+=r.leads;
+    if(!ch.dates[r.date]) ch.dates[r.date]={date:r.date,spends:0,leads:0,tleads:0};
+    const d=ch.dates[r.date];
+    d.spends+=r.spends; d.leads+=r.leads;
+    // Assign triggers once per date|model|buGroup to avoid double-counting
+    const tk=`${r.date}|${r.model}|${bg}`;
+    if(!usedTrig.has(tk)){
+      usedTrig.add(tk);
+      const t=bg==='Adwords'?(awTM[ck]||0):bg==='MS-FB'?(fbTM[ck]||0):(ctwaTM[ck]||0);
+      m.tleads+=t; ch.tleads+=t; d.tleads+=t;
+    }
   }
   const models=Object.values(modelMap).sort((a,b)=>b.spends-a.spends||a.model.localeCompare(b.model));
   document.getElementById('caRowCount').textContent=`${models.length} models`;
@@ -1068,19 +1089,19 @@ function renderCampaign(){
   const tot={s:0,l:0,t:0};
   models.forEach((m,mi)=>{
     tot.s+=m.spends; tot.l+=m.leads; tot.t+=m.tleads;
-    const ctList=Object.values(m.cts).sort((a,b)=>b.spends-a.spends);
+    const chList=Object.values(m.channels).sort((a,b)=>b.spends-a.spends);
     h+=`<tr class="ca-model-row" onclick="toggleCaModel(${mi})" data-mi="${mi}">
-  <td style="padding:11px 16px"><span class="expand-icon" id="ca-ei-m${mi}">▶ </span>${escH(m.model)}<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:8px">${ctList.length} campaign type${ctList.length!==1?'s':''}</span></td>
+  <td style="padding:11px 16px"><span class="expand-icon" id="ca-ei-m${mi}">▶ </span>${escH(m.model)}<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:8px">${chList.length} channel${chList.length!==1?'s':''}</span></td>
   <td class="ca-num">${fmtNum(m.spends)}</td><td class="ca-num">${fmtL(m.leads)}</td>
   <td class="ca-num">${m.tleads>0?fmtL(m.tleads):'—'}</td>
   <td class="ca-num">${fmtC2(m.spends,m.leads)}</td><td class="ca-num">${m.tleads>0?fmtC2(m.spends,m.tleads):'—'}</td>
 </tr>`;
-    ctList.forEach((c,ci)=>{
-      const cls=caBuClass(c.ct);
+    chList.forEach((c,ci)=>{
+      const cls=c.bg==='Adwords'?'aw':c.bg==='MS-FB'?'fb':c.bg.toLowerCase().includes('ctwa')||c.bg.toLowerCase().includes('whatsapp')?'ctwa':'other';
       const dateList=Object.values(c.dates).sort((a,b)=>a.date.localeCompare(b.date));
       const ckId=`${mi}-${ci}`;
       h+=`<tr class="ca-ct-row ct-${cls} hidden" data-mi="${mi}" data-ck="${ckId}" onclick="toggleCaCT('${ckId}')">
-  <td style="padding:9px 16px 9px 28px"><span class="expand-icon" id="ca-ei-c${ckId}">▶ </span><span class="ca-badge ca-badge-${cls}">${escH(c.ct)}</span></td>
+  <td style="padding:9px 16px 9px 28px"><span class="expand-icon" id="ca-ei-c${ckId}">▶ </span><span class="ca-badge ca-badge-${cls}">${escH(c.bg)}</span></td>
   <td class="ca-num">${fmtNum(c.spends)}</td><td class="ca-num">${fmtL(c.leads)}</td>
   <td class="ca-num">${c.tleads>0?fmtL(c.tleads):'—'}</td>
   <td class="ca-num">${fmtC2(c.spends,c.leads)}</td><td class="ca-num">${c.tleads>0?fmtC2(c.spends,c.tleads):'—'}</td>
