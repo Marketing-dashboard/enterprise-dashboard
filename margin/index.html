@@ -391,8 +391,8 @@ td.mrg-neg{color:#dc2626}
     </div>
     <div class="kpi-bar">
       <div class="kpi-card"><div class="kpi-label">Total Spends</div><div class="kpi-value" id="k-spends">—</div><div class="kpi-sub">Combined</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Leads</div><div class="kpi-value" id="k-leads">—</div><div class="kpi-sub">Combined</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Triggers</div><div class="kpi-value" id="k-tleads">—</div><div class="kpi-sub">Post Validation</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="k-revenue">—</div><div class="kpi-sub">Combined</div></div>
+      <div class="kpi-card"><div class="kpi-label">Margin %</div><div class="kpi-value" id="k-margin">—</div><div class="kpi-sub">(1 − Spend/Revenue)</div></div>
       <div class="kpi-card"><div class="kpi-label">Avg CPL</div><div class="kpi-value" id="k-cpl">—</div><div class="kpi-sub">Combined</div></div>
       <div class="kpi-card"><div class="kpi-label">Avg TCPL</div><div class="kpi-value" id="k-tcpl">—</div><div class="kpi-sub">Combined</div></div>
     </div>
@@ -1015,9 +1015,13 @@ function resetFilters(){
 }
 function renderKPIs(){
   const tS=_filtered.reduce((s,r)=>s+r.combSpend,0), tL=_filtered.reduce((s,r)=>s+r.combLeads,0), tT=_filtered.reduce((s,r)=>s+r.combTrig,0);
+  const tRev=_filtered.reduce((s,r)=>s+(r.combRev||0),0);
+  const tMgn=tRev>0?(1-tS/tRev)*100:null;
   document.getElementById('k-spends').textContent=fmtNum(tS);
-  document.getElementById('k-leads').textContent=fmtL(tL);
-  document.getElementById('k-tleads').textContent=fmtL(tT);
+  document.getElementById('k-revenue').textContent=tRev>0?fmtNum(tRev):'—';
+  const mEl=document.getElementById('k-margin');
+  if(tMgn===null){mEl.textContent='—';mEl.style.color='';}
+  else{mEl.textContent=tMgn.toFixed(1)+'%';mEl.style.color=tMgn>=0?'#15803d':'#dc2626';}
   document.getElementById('k-cpl').textContent=fmtC(tS,tL);
   document.getElementById('k-tcpl').textContent=fmtC(tS,tT);
 }
@@ -1213,21 +1217,23 @@ function renderCampaign(){
 <thead>
 <tr style="background:#0f172a;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.06em">
   <th class="left" style="padding:10px 16px;font-weight:600;min-width:260px">Model / Campaign Type / Date</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600">Spends</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600">Leads</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600">TLeads</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600">CPL</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600">TCPL</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600;width:110px">Spends</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600;width:72px;color:var(--text3)">Spend%</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600;width:90px">Leads</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600;width:90px">TLeads</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600;width:80px">CPL</th>
+  <th style="padding:10px 14px;text-align:right;font-weight:600;width:80px">TCPL</th>
 </tr>
 </thead><tbody>`;
   const tot={s:0,l:0,t:0};
-  const fmtSpendPct=(num,denom)=>denom>0?`<span style="color:var(--text3);font-size:10px;margin-left:4px;font-weight:400">${(num/denom*100).toFixed(1)}%</span>`:'';
+  const fmtSpendPct=(num,denom)=>denom>0?`${(num/denom*100).toFixed(1)}%`:'—';
   models.forEach((m,mi)=>{
     tot.s+=m.spends; tot.l+=m.leads; tot.t+=m.tleads;
     const ctList=Object.values(m.cts).sort((a,b)=>b.spends-a.spends);
     h+=`<tr class="ca-model-row" onclick="toggleCaModel(${mi})" data-mi="${mi}">
   <td style="padding:11px 16px"><span class="expand-icon" id="ca-ei-m${mi}">▶ </span>${escH(m.model)}<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:8px">${ctList.length} campaign type${ctList.length!==1?'s':''}</span></td>
-  <td class="ca-num">${fmtNum(m.spends)}</td><td class="ca-num">${fmtL(m.leads)}</td>
+  <td class="ca-num">${fmtNum(m.spends)}</td><td class="ca-num" style="color:#94a3b8">100%</td>
+  <td class="ca-num">${fmtL(m.leads)}</td>
   <td class="ca-num">${m.tleads>0?fmtL(m.tleads):'—'}</td>
   <td class="ca-num">${fmtC2(m.spends,m.leads)}</td><td class="ca-num">${m.tleads>0?fmtC2(m.spends,m.tleads):'—'}</td>
 </tr>`;
@@ -1237,14 +1243,15 @@ function renderCampaign(){
       const ckId=`${mi}-${ci}`;
       h+=`<tr class="ca-ct-row ct-${cls} hidden" data-mi="${mi}" data-ck="${ckId}" onclick="toggleCaCT('${ckId}')">
   <td style="padding:9px 16px 9px 28px"><span class="expand-icon" id="ca-ei-c${ckId}">▶ </span><span class="ca-badge ca-badge-${cls}">${escH(c.ct)}</span></td>
-  <td class="ca-num">${fmtNum(c.spends)}${fmtSpendPct(c.spends,m.spends)}</td><td class="ca-num">${fmtL(c.leads)}</td>
+  <td class="ca-num">${fmtNum(c.spends)}</td><td class="ca-num" style="color:var(--text3);font-size:11px">${fmtSpendPct(c.spends,m.spends)}</td>
+  <td class="ca-num">${fmtL(c.leads)}</td>
   <td class="ca-num">${c.tleads>0?fmtL(c.tleads):'—'}</td>
   <td class="ca-num">${fmtC2(c.spends,c.leads)}</td><td class="ca-num">${c.tleads>0?fmtC2(c.spends,c.tleads):'—'}</td>
 </tr>`;
       for(const d of dateList){
         h+=`<tr class="ca-date-row hidden" data-ck="${ckId}">
   <td style="padding:7px 16px 7px 48px;color:var(--text2,#64748b)">${fmtDate(d.date)}</td>
-  <td class="ca-num" style="color:var(--text1)">${fmtNum(d.spends)}</td>
+  <td class="ca-num" style="color:var(--text1)">${fmtNum(d.spends)}</td><td class="ca-num"></td>
   <td class="ca-num" style="color:var(--text1)">${fmtL(d.leads)}</td>
   <td class="ca-num" style="color:var(--text1)">${d.tleads>0?fmtL(d.tleads):'—'}</td>
   <td class="ca-num" style="color:var(--text1)">${fmtC2(d.spends,d.leads)}</td>
@@ -1255,7 +1262,8 @@ function renderCampaign(){
   });
   h+=`</tbody><tfoot><tr style="background:var(--surface-alt,#f8fafc);font-weight:700;border-top:2px solid var(--border)">
   <td style="padding:10px 16px">TOTAL</td>
-  <td class="ca-num">${fmtNum(tot.s)}</td><td class="ca-num">${fmtL(tot.l)}</td>
+  <td class="ca-num">${fmtNum(tot.s)}</td><td class="ca-num" style="color:#94a3b8;font-size:11px">—</td>
+  <td class="ca-num">${fmtL(tot.l)}</td>
   <td class="ca-num">${fmtL(tot.t)}</td>
   <td class="ca-num">${fmtC2(tot.s,tot.l)}</td><td class="ca-num">${fmtC2(tot.s,tot.t)}</td>
 </tr></tfoot></table>`;
