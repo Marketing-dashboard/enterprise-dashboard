@@ -719,19 +719,33 @@ function loadRatesTab(){
 }
 
 async function saveRates(){
-  document.querySelectorAll('#adminBody input[data-rtype]').forEach(inp=>{
-    const v=inp.value.trim(), k=inp.dataset.rkey;
-    if(inp.dataset.rtype==='cpl'){
-      const n=parseFloat(v); if(!isNaN(n)&&n>0) _rates.soldCPL[k]=n; else delete _rates.soldCPL[k];
-    } else {
-      const n=parseFloat(v); if(!isNaN(n)&&n>=0) _rates.validation[k]=n; else delete _rates.validation[k];
-    }
-  });
-  await RATES_DOC().set({soldCPL:_rates.soldCPL,validation:_rates.validation,
-    updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:auth.currentUser?.email||''});
-  applyRatesToRows(); applyFilters();
+  const btn=document.querySelector('#adminBody .rates-save-btn');
   const msg=document.getElementById('ratesSaveMsg');
-  msg.style.display='inline'; setTimeout(()=>msg.style.display='none',2500);
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  if(msg){ msg.style.display='none'; msg.style.color='#16a34a'; }
+  try{
+    document.querySelectorAll('#adminBody input[data-rtype]').forEach(inp=>{
+      const v=inp.value.trim(), k=inp.dataset.rkey;
+      if(inp.dataset.rtype==='cpl'){
+        const n=parseFloat(v); if(!isNaN(n)&&n>0) _rates.soldCPL[k]=n; else delete _rates.soldCPL[k];
+      } else {
+        const n=parseFloat(v); if(!isNaN(n)&&n>=0) _rates.validation[k]=n; else delete _rates.validation[k];
+      }
+    });
+    await RATES_DOC().set({
+      soldCPL:_rates.soldCPL,
+      validation:_rates.validation,
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy:auth.currentUser?.email||''
+    });
+    applyRatesToRows(); applyFilters();
+    if(msg){ msg.textContent='✓ Saved'; msg.style.color='#16a34a'; msg.style.display='inline'; setTimeout(()=>msg.style.display='none',3000); }
+  }catch(e){
+    console.error('saveRates error',e);
+    if(msg){ msg.textContent='✗ Error: '+e.message; msg.style.color='#dc2626'; msg.style.display='inline'; }
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='💾 Save & Recalculate'; }
+  }
 }
 
 // ══════════════════════════════════════════
