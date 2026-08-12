@@ -256,6 +256,26 @@ tr.ca-date-row.hidden,tr.ca-ct-row.hidden{display:none}
 .row-ct{color:var(--text2)}
 .row-ct:hover td{background:#f8f9ff}
 .expand-icon{display:inline-block;width:14px;font-size:10px;color:var(--text3);margin-right:5px;user-select:none}
+/* ── Rates admin tab ── */
+.rates-wrap{padding:0 16px 16px}
+.rates-section-hd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:14px 0 6px;border-top:1px solid var(--border);margin-top:4px}
+.rates-section-hd:first-child{border-top:none}
+.rates-month-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.rates-month-row label{font-size:12px;font-weight:600;color:var(--text2)}
+.rates-month-row select{font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text1)}
+.rates-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+.rates-tbl th{background:#1e293b;color:#94a3b8;padding:7px 10px;text-align:center;font-size:10.5px;font-weight:600;letter-spacing:.04em}
+.rates-tbl th:first-child{text-align:left}
+.rates-tbl td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
+.rates-tbl input[type=number]{width:76px;border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-size:12px;text-align:right;background:var(--surface);color:var(--text1)}
+.rates-tbl input[type=number]:focus{outline:none;border-color:#4f6ef7}
+.rates-save-btn{background:#4f6ef7;color:#fff;border:none;border-radius:6px;padding:8px 22px;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px}
+.rates-save-btn:hover{background:#3b5ce4}
+.rates-save-msg{font-size:12px;color:#16a34a;margin-left:10px;font-weight:600}
+/* Revenue / Margin column colors */
+th.th-rev,td.rev{color:#0f766e}
+th.th-mrg,td.mrg-pos{color:#15803d}
+td.mrg-neg{color:#dc2626}
 .ct-tag{display:inline-flex;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
 .ct-tag.ct-aw{background:var(--aw-bg);color:var(--aw)}
 .ct-tag.ct-fb{background:var(--fb-bg);color:var(--fb)}
@@ -455,6 +475,7 @@ tr.ca-date-row.hidden,tr.ca-ct-row.hidden{display:none}
       <button class="admin-tab active" id="atab-pending"  onclick="switchAdminTab('pending')">Pending <span class="badge-count red" id="pendingCount" style="display:none">0</span></button>
       <button class="admin-tab"        id="atab-approved" onclick="switchAdminTab('approved')">Approved</button>
       <button class="admin-tab"        id="atab-revoked"  onclick="switchAdminTab('revoked')">Revoked</button>
+      <button class="admin-tab"        id="atab-rates"    onclick="switchAdminTab('rates')">📊 Rates</button>
     </div>
     <div class="admin-body" id="adminBody">
       <div class="admin-empty">Loading…</div>
@@ -501,7 +522,7 @@ auth.onAuthStateChanged(async user => {
     _isAdmin = true;
     showScreen('app');
     document.getElementById('adminFab').style.display = 'flex';
-    loadData();
+    await loadRates(); loadData();
     ensureApproved(user).catch(() => {});
     return;
   }
@@ -514,7 +535,7 @@ auth.onAuthStateChanged(async user => {
     showPendingScreen(user);
   } else {
     const data = snap.data();
-    if (data.status === 'approved') { showScreen('app'); loadData(); }
+    if (data.status === 'approved') { showScreen('app'); loadRates().then(loadData); }
     else if (data.status === 'revoked') { showRevokedScreen(user); }
     else { showPendingScreen(user); }
   }
@@ -576,10 +597,11 @@ function closeAdminIfOutside(e) { if (e.target === document.getElementById('admi
 
 function switchAdminTab(tab) {
   _adminTab = tab;
-  ['pending','approved','revoked'].forEach(t => {
+  ['pending','approved','revoked','rates'].forEach(t => {
     document.getElementById('atab-'+t).classList.toggle('active', t===tab);
   });
-  loadAdminTab(tab);
+  if(tab==='rates') loadRatesTab();
+  else loadAdminTab(tab);
 }
 
 async function loadAdminTab(tab) {
@@ -631,6 +653,99 @@ async function revokeUser(email) {
 }
 
 // ══════════════════════════════════════════
+//  RATES — Validation % + Sold CPL
+// ══════════════════════════════════════════
+const RATES_DOC = () => db.collection('enterprise_rates').doc('rates_v1');
+const RATE_CHS  = ['Adwords','MS-FB','CTWA'];
+
+async function loadRates(){
+  try{
+    const snap=await RATES_DOC().get();
+    if(snap.exists) _rates={soldCPL:snap.data().soldCPL||{},validation:snap.data().validation||{}};
+  }catch(e){ console.warn('Rates load failed',e); }
+}
+
+function applyRatesToRows(){
+  for(const r of _rows){
+    const bm=`${r.brand}||${r.model}`, mo=r.month;
+    const awV=(_rates.validation[`${bm}||Adwords||${mo}`]??0)/100;
+    const fbV=(_rates.validation[`${bm}||MS-FB||${mo}`]??0)/100;
+    const ctV=(_rates.validation[`${bm}||CTWA||${mo}`]??0)/100;
+    const awC=_rates.soldCPL[`${bm}||Adwords`]||0;
+    const fbC=_rates.soldCPL[`${bm}||MS-FB`]||0;
+    const ctC=_rates.soldCPL[`${bm}||CTWA`]||0;
+    r.awPVL =r.awTrig *awV; r.awRev =r.awPVL *awC; r.awMgn =r.awRev -r.awSpend;
+    r.fbPVL =r.fbTrig *fbV; r.fbRev =r.fbPVL *fbC; r.fbMgn =r.fbRev -r.fbSpend;
+    r.ctwaPVL=r.ctwaTrig*ctV; r.ctwaRev=r.ctwaPVL*ctC; r.ctwaMgn=r.ctwaRev-r.ctwaSpend;
+    r.combPVL=r.awPVL+r.fbPVL+r.ctwaPVL;
+    r.combRev=r.awRev+r.fbRev+r.ctwaRev;
+    r.combMgn=r.combRev-r.combSpend;
+  }
+}
+
+let _ratesMonth='';
+function loadRatesTab(){
+  const body=document.getElementById('adminBody');
+  const months=[...new Set(_rows.map(r=>r.month))].filter(Boolean).sort();
+  const now=new Date();
+  const defMo=`${_MO_NAMES[now.getMonth()+1]}'${String(now.getFullYear()).slice(2)}`;
+  if(!_ratesMonth) _ratesMonth=months.includes(defMo)?defMo:(months[months.length-1]||defMo);
+  const bms=[...new Set(_rows.map(r=>`${r.brand}||${r.model}`))].sort();
+
+  let h=`<div class="rates-wrap">`;
+  // ── Sold CPL ──
+  h+=`<div class="rates-section-hd">💰 Sold CPL (fixed · per model per channel)</div>`;
+  h+=`<table class="rates-tbl"><tr><th>Brand / Model</th>${RATE_CHS.map(c=>`<th>${c} CPL (₹)</th>`).join('')}</tr>`;
+  for(const bm of bms){
+    const [br,mo]=bm.split('||');
+    h+=`<tr><td><span style="font-weight:600">${escH(mo)}</span><div style="font-size:10px;color:var(--text3)">${escH(br)}</div></td>`;
+    for(const ch of RATE_CHS){
+      const v=_rates.soldCPL[`${bm}||${ch}`]||'';
+      h+=`<td><input type="number" min="0" data-rtype="cpl" data-rkey="${bm}||${ch}" value="${v}" placeholder="—"></td>`;
+    }
+    h+=`</tr>`;
+  }
+  h+=`</table>`;
+
+  // ── Validation % ──
+  h+=`<div class="rates-section-hd">✅ Validation % (per month)</div>`;
+  h+=`<div class="rates-month-row"><label>Month:</label>`;
+  h+=`<select onchange="_ratesMonth=this.value;loadRatesTab()">`;
+  h+=months.map(m=>`<option value="${m}"${m===_ratesMonth?' selected':''}>${m}</option>`).join('');
+  h+=`</select></div>`;
+  h+=`<table class="rates-tbl"><tr><th>Brand / Model</th>${RATE_CHS.map(c=>`<th>${c} Val %</th>`).join('')}</tr>`;
+  for(const bm of bms){
+    const [br,mo]=bm.split('||');
+    h+=`<tr><td><span style="font-weight:600">${escH(mo)}</span><div style="font-size:10px;color:var(--text3)">${escH(br)}</div></td>`;
+    for(const ch of RATE_CHS){
+      const v=_rates.validation[`${bm}||${ch}||${_ratesMonth}`];
+      h+=`<td><input type="number" min="0" max="100" step="0.1" data-rtype="val" data-rkey="${bm}||${ch}||${_ratesMonth}" value="${v!==undefined?v:''}" placeholder="—"></td>`;
+    }
+    h+=`</tr>`;
+  }
+  h+=`</table>`;
+  h+=`<div style="display:flex;align-items:center"><button class="rates-save-btn" onclick="saveRates()">💾 Save</button><span class="rates-save-msg" id="ratesSaveMsg" style="display:none">✓ Saved</span></div>`;
+  h+=`</div>`;
+  body.innerHTML=h;
+}
+
+async function saveRates(){
+  document.querySelectorAll('#adminBody input[data-rtype]').forEach(inp=>{
+    const v=inp.value.trim(), k=inp.dataset.rkey;
+    if(inp.dataset.rtype==='cpl'){
+      const n=parseFloat(v); if(!isNaN(n)&&n>0) _rates.soldCPL[k]=n; else delete _rates.soldCPL[k];
+    } else {
+      const n=parseFloat(v); if(!isNaN(n)&&n>=0) _rates.validation[k]=n; else delete _rates.validation[k];
+    }
+  });
+  await RATES_DOC().set({soldCPL:_rates.soldCPL,validation:_rates.validation,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:auth.currentUser?.email||''});
+  applyRatesToRows(); applyFilters();
+  const msg=document.getElementById('ratesSaveMsg');
+  msg.style.display='inline'; setTimeout(()=>msg.style.display='none',2500);
+}
+
+// ══════════════════════════════════════════
 //  DASHBOARD DATA
 // ══════════════════════════════════════════
 const ENT_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=1372441356';
@@ -639,6 +754,7 @@ const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 const REF_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
 
 let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[];
+let _rates={soldCPL:{},validation:{}};
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
 function parseCSVLine(line){
@@ -881,7 +997,7 @@ async function loadData(){
         ctwaSpend:ctwa.spends,ctwaLeads:ctwa.leads,ctwaTrig:ctwaTrigMap[ck]||0,
         combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
     }
-    populateFilters(); applyFilters(); renderDemand();
+    applyRatesToRows(); populateFilters(); applyFilters(); renderDemand();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('statusChip').textContent=`${_rows.length} rows · ${ts}`;
   }catch(e){
@@ -968,63 +1084,84 @@ function renderTable(){
   if(!_filtered.length){ document.getElementById('tableContainer').innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
   const sorted=[..._filtered].sort((a,b)=>{
     const dd=b.date.localeCompare(a.date); if(dd) return dd;
-    const db=a.brand.localeCompare(b.brand); if(db) return db;
+    const db2=a.brand.localeCompare(b.brand); if(db2) return db2;
     return a.model.localeCompare(b.model);
   });
+  const fmtRev=v=>v>0?'₹'+Math.round(v).toLocaleString('en-IN'):'';
+  const fmtMgn=v=>v===0?'':v>0?`<span style="color:#15803d">₹${Math.round(v).toLocaleString('en-IN')}</span>`:`<span style="color:#dc2626">-₹${Math.round(Math.abs(v)).toLocaleString('en-IN')}</span>`;
+  const fmtPVL=v=>v>0?Math.round(v).toLocaleString('en-IN'):'';
+  // channel cell helper: Spends|Leads|TLeads|PostValTL|CPL|TCPL|Revenue|Margin
+  const chCells=(cls,S,L,T,PVL,Rev,Mgn)=>{
+    const hasPVL=PVL>0;
+    return `<td class="td-num ${cls}">${fmtNum(S)}</td>`+
+      `<td class="td-num ${cls}">${fmtL(L)}</td>`+
+      `<td class="td-num ${cls}">${T>0?fmtL(T):''}</td>`+
+      `<td class="td-num ${cls}">${hasPVL?fmtPVL(PVL):''}</td>`+
+      `<td class="td-num ${cls}">${fmtC(S,L)}</td>`+
+      `<td class="td-num ${cls}">${hasPVL?fmtC(S,PVL):''}</td>`+
+      `<td class="td-num ${cls}">${fmtRev(Rev)}</td>`+
+      `<td class="td-num ${cls}">${Mgn!==0?fmtMgn(Mgn):''}</td>`;
+  };
   // Group by date|brand
   const groups=[], groupMap={};
   for(const r of sorted){
     const bk=`${r.date}|${r.brand}`;
     if(!groupMap[bk]){
-      const g={key:bk,date:r.date,brand:r.brand,awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0,models:[]};
+      const g={key:bk,date:r.date,brand:r.brand,
+        awS:0,awL:0,awT:0,awPVL:0,awRev:0,awMgn:0,
+        fbS:0,fbL:0,fbT:0,fbPVL:0,fbRev:0,fbMgn:0,
+        ctwaS:0,ctwaL:0,ctwaT:0,ctwaPVL:0,ctwaRev:0,ctwaMgn:0,
+        cS:0,cL:0,cT:0,cPVL:0,cRev:0,cMgn:0,models:[]};
       groupMap[bk]=g; groups.push(g);
     }
     const g=groupMap[bk];
-    g.awS+=r.awSpend;g.awL+=r.awLeads;g.awT+=r.awTrig;
-    g.fbS+=r.fbSpend;g.fbL+=r.fbLeads;g.fbT+=r.fbTrig;
-    g.ctwaS+=r.ctwaSpend;g.ctwaL+=r.ctwaLeads;g.ctwaT+=r.ctwaTrig;
-    g.cS+=r.combSpend;g.cL+=r.combLeads;g.cT+=r.combTrig;
+    g.awS+=r.awSpend;g.awL+=r.awLeads;g.awT+=r.awTrig;g.awPVL+=(r.awPVL||0);g.awRev+=(r.awRev||0);g.awMgn+=(r.awMgn||0);
+    g.fbS+=r.fbSpend;g.fbL+=r.fbLeads;g.fbT+=r.fbTrig;g.fbPVL+=(r.fbPVL||0);g.fbRev+=(r.fbRev||0);g.fbMgn+=(r.fbMgn||0);
+    g.ctwaS+=r.ctwaSpend;g.ctwaL+=r.ctwaLeads;g.ctwaT+=r.ctwaTrig;g.ctwaPVL+=(r.ctwaPVL||0);g.ctwaRev+=(r.ctwaRev||0);g.ctwaMgn+=(r.ctwaMgn||0);
+    g.cS+=r.combSpend;g.cL+=r.combLeads;g.cT+=r.combTrig;g.cPVL+=(r.combPVL||0);g.cRev+=(r.combRev||0);g.cMgn+=(r.combMgn||0);
     g.models.push(r);
   }
   let h='<table><thead>';
   h+='<tr class="group-row"><th class="s0 left" colspan="3"></th>';
-  h+='<th class="th-aw" colspan="5">📊 Adwords</th>';
-  h+='<th class="th-fb" colspan="5">📱 MS-FB</th>';
-  h+='<th class="th-ctwa" colspan="5">💬 CTWA</th>';
-  h+='<th class="th-comb" colspan="5">🔗 Combined</th></tr>';
+  h+='<th class="th-aw" colspan="8">📊 Adwords</th>';
+  h+='<th class="th-fb" colspan="8">📱 MS-FB</th>';
+  h+='<th class="th-ctwa" colspan="8">💬 CTWA</th>';
+  h+='<th class="th-comb" colspan="8">🔗 Combined</th></tr>';
   h+='<tr class="col-row"><th class="s0 left">Date</th><th class="s1 left">Brand</th><th class="s2 left">Model</th>';
   ['aw','fb','ctwa','comb'].forEach(cls=>{
-    h+=`<th class="${cls} ${cls}-first">Spends</th><th class="${cls}">Leads</th><th class="${cls}">TLeads</th><th class="${cls}">CPL</th><th class="${cls} ${cls}-last">TCPL</th>`;
+    h+=`<th class="${cls} ${cls}-first">Spends</th><th class="${cls}">Leads</th><th class="${cls}">TLeads</th><th class="${cls}">PVL</th><th class="${cls}">CPL</th><th class="${cls}">TCPL</th><th class="${cls} th-rev">Revenue</th><th class="${cls} ${cls}-last th-mrg">Margin</th>`;
   });
   h+='</tr></thead><tbody>';
-  const tot={awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0};
+  const tot={awS:0,awL:0,awT:0,awPVL:0,awRev:0,awMgn:0,fbS:0,fbL:0,fbT:0,fbPVL:0,fbRev:0,fbMgn:0,ctwaS:0,ctwaL:0,ctwaT:0,ctwaPVL:0,ctwaRev:0,ctwaMgn:0,cS:0,cL:0,cT:0,cPVL:0,cRev:0,cMgn:0};
   const bkEnc=k=>k.replace(/"/g,'&quot;');
   for(const g of groups){
-    tot.awS+=g.awS;tot.awL+=g.awL;tot.awT+=g.awT;
-    tot.fbS+=g.fbS;tot.fbL+=g.fbL;tot.fbT+=g.fbT;
-    tot.ctwaS+=g.ctwaS;tot.ctwaL+=g.ctwaL;tot.ctwaT+=g.ctwaT;
-    tot.cS+=g.cS;tot.cL+=g.cL;tot.cT+=g.cT;
+    tot.awS+=g.awS;tot.awL+=g.awL;tot.awT+=g.awT;tot.awPVL+=g.awPVL;tot.awRev+=g.awRev;tot.awMgn+=g.awMgn;
+    tot.fbS+=g.fbS;tot.fbL+=g.fbL;tot.fbT+=g.fbT;tot.fbPVL+=g.fbPVL;tot.fbRev+=g.fbRev;tot.fbMgn+=g.fbMgn;
+    tot.ctwaS+=g.ctwaS;tot.ctwaL+=g.ctwaL;tot.ctwaT+=g.ctwaT;tot.ctwaPVL+=g.ctwaPVL;tot.ctwaRev+=g.ctwaRev;tot.ctwaMgn+=g.ctwaMgn;
+    tot.cS+=g.cS;tot.cL+=g.cL;tot.cT+=g.cT;tot.cPVL+=g.cPVL;tot.cRev+=g.cRev;tot.cMgn+=g.cMgn;
     const nc=g.models.length, multi=nc>1;
     const icon=multi?`<span class="expand-icon" id="ei-${bkEnc(g.key)}">▶ </span>`:'';
     const onclick=multi?` onclick="toggleModels('${bkEnc(g.key)}')"`:' style="cursor:default"';
     h+=`<tr class="brand-row"${onclick}><td class="s0" style="white-space:nowrap">${fmtDate(g.date)}</td><td class="s1">${icon}${escH(g.brand)}</td><td class="s2" style="color:var(--text3);font-weight:400;font-size:11px">${multi?nc+' models':escH(g.models[0].model)}</td>`;
-    h+=`<td class="td-num aw">${fmtNum(g.awS)}</td><td class="td-num aw">${fmtL(g.awL)}</td><td class="td-num aw">${g.awT>0?fmtL(g.awT):''}</td><td class="td-num aw">${fmtC(g.awS,g.awL)}</td><td class="td-num aw">${g.awT>0?fmtC(g.awS,g.awT):''}</td>`;
-    h+=`<td class="td-num fb">${fmtNum(g.fbS)}</td><td class="td-num fb">${fmtL(g.fbL)}</td><td class="td-num fb">${g.fbT>0?fmtL(g.fbT):''}</td><td class="td-num fb">${fmtC(g.fbS,g.fbL)}</td><td class="td-num fb">${g.fbT>0?fmtC(g.fbS,g.fbT):''}</td>`;
-    h+=`<td class="td-num ctwa">${fmtNum(g.ctwaS)}</td><td class="td-num ctwa">${fmtL(g.ctwaL)}</td><td class="td-num ctwa">${g.ctwaT>0?fmtL(g.ctwaT):''}</td><td class="td-num ctwa">${fmtC(g.ctwaS,g.ctwaL)}</td><td class="td-num ctwa">${g.ctwaT>0?fmtC(g.ctwaS,g.ctwaT):''}</td>`;
-    h+=`<td class="td-num comb">${fmtNum(g.cS)}</td><td class="td-num comb">${fmtL(g.cL)}</td><td class="td-num comb">${g.cT>0?fmtL(g.cT):''}</td><td class="td-num comb">${fmtC(g.cS,g.cL)}</td><td class="td-num comb">${g.cT>0?fmtC(g.cS,g.cT):''}</td></tr>`;
+    h+=chCells('aw',g.awS,g.awL,g.awT,g.awPVL,g.awRev,g.awMgn);
+    h+=chCells('fb',g.fbS,g.fbL,g.fbT,g.fbPVL,g.fbRev,g.fbMgn);
+    h+=chCells('ctwa',g.ctwaS,g.ctwaL,g.ctwaT,g.ctwaPVL,g.ctwaRev,g.ctwaMgn);
+    h+=chCells('comb',g.cS,g.cL,g.cT,g.cPVL,g.cRev,g.cMgn);
+    h+='</tr>';
     if(multi) for(const r of g.models){
-      h+=`<tr class="model-row hidden" data-bk="${bkEnc(g.key)}"><td class="s0"></td><td class="s1" style="font-weight:400;color:var(--text2)"></td><td class="s2" style="padding-left:20px">${escH(r.model)}</td>`;
-      h+=`<td class="td-num aw">${fmtNum(r.awSpend)}</td><td class="td-num aw">${fmtL(r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtL(r.awTrig):''}</td><td class="td-num aw">${fmtC(r.awSpend,r.awLeads)}</td><td class="td-num aw">${r.awTrig>0?fmtC(r.awSpend,r.awTrig):''}</td>`;
-      h+=`<td class="td-num fb">${fmtNum(r.fbSpend)}</td><td class="td-num fb">${fmtL(r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtL(r.fbTrig):''}</td><td class="td-num fb">${fmtC(r.fbSpend,r.fbLeads)}</td><td class="td-num fb">${r.fbTrig>0?fmtC(r.fbSpend,r.fbTrig):''}</td>`;
-      h+=`<td class="td-num ctwa">${fmtNum(r.ctwaSpend)}</td><td class="td-num ctwa">${fmtL(r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtL(r.ctwaTrig):''}</td><td class="td-num ctwa">${fmtC(r.ctwaSpend,r.ctwaLeads)}</td><td class="td-num ctwa">${r.ctwaTrig>0?fmtC(r.ctwaSpend,r.ctwaTrig):''}</td>`;
-      h+=`<td class="td-num comb">${fmtNum(r.combSpend)}</td><td class="td-num comb">${fmtL(r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtL(r.combTrig):''}</td><td class="td-num comb">${fmtC(r.combSpend,r.combLeads)}</td><td class="td-num comb">${r.combTrig>0?fmtC(r.combSpend,r.combTrig):''}</td></tr>`;
+      h+=`<tr class="model-row hidden" data-bk="${bkEnc(g.key)}"><td class="s0"></td><td class="s1"></td><td class="s2" style="padding-left:20px">${escH(r.model)}</td>`;
+      h+=chCells('aw',r.awSpend,r.awLeads,r.awTrig,r.awPVL||0,r.awRev||0,r.awMgn||0);
+      h+=chCells('fb',r.fbSpend,r.fbLeads,r.fbTrig,r.fbPVL||0,r.fbRev||0,r.fbMgn||0);
+      h+=chCells('ctwa',r.ctwaSpend,r.ctwaLeads,r.ctwaTrig,r.ctwaPVL||0,r.ctwaRev||0,r.ctwaMgn||0);
+      h+=chCells('comb',r.combSpend,r.combLeads,r.combTrig,r.combPVL||0,r.combRev||0,r.combMgn||0);
+      h+='</tr>';
     }
   }
   h+='</tbody><tfoot><tr><td class="s0 left" style="font-weight:700">TOTAL</td><td class="s1"></td><td class="s2"></td>';
-  h+=`<td class="aw">${fmtNum(tot.awS)}</td><td class="aw">${fmtL(tot.awL)}</td><td class="aw">${fmtL(tot.awT)}</td><td class="aw">${fmtC(tot.awS,tot.awL)}</td><td class="aw">${fmtC(tot.awS,tot.awT)}</td>`;
-  h+=`<td class="fb">${fmtNum(tot.fbS)}</td><td class="fb">${fmtL(tot.fbL)}</td><td class="fb">${fmtL(tot.fbT)}</td><td class="fb">${fmtC(tot.fbS,tot.fbL)}</td><td class="fb">${fmtC(tot.fbS,tot.fbT)}</td>`;
-  h+=`<td class="ctwa">${fmtNum(tot.ctwaS)}</td><td class="ctwa">${fmtL(tot.ctwaL)}</td><td class="ctwa">${fmtL(tot.ctwaT)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaL)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaT)}</td>`;
-  h+=`<td class="comb">${fmtNum(tot.cS)}</td><td class="comb">${fmtL(tot.cL)}</td><td class="comb">${fmtL(tot.cT)}</td><td class="comb">${fmtC(tot.cS,tot.cL)}</td><td class="comb">${fmtC(tot.cS,tot.cT)}</td>`;
+  h+=chCells('aw',tot.awS,tot.awL,tot.awT,tot.awPVL,tot.awRev,tot.awMgn);
+  h+=chCells('fb',tot.fbS,tot.fbL,tot.fbT,tot.fbPVL,tot.fbRev,tot.fbMgn);
+  h+=chCells('ctwa',tot.ctwaS,tot.ctwaL,tot.ctwaT,tot.ctwaPVL,tot.ctwaRev,tot.ctwaMgn);
+  h+=chCells('comb',tot.cS,tot.cL,tot.cT,tot.cPVL,tot.cRev,tot.cMgn);
   h+='</tr></tfoot></table>';
   document.getElementById('tableContainer').innerHTML=h;
 }
