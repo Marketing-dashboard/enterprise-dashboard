@@ -941,6 +941,26 @@ async function loadData(){
         ctwaSpend:ctwa.spends,ctwaLeads:ctwa.leads,ctwaTrig:ctwaTrigMap[ck]||0,
         combSpend:cb.spends,combLeads:cb.leads,combTrig:ct});
     }
+    // Add trigger-only daily rows for Citroen (days with triggers but no spend in Enterprise_Raw)
+    const citroenBrands=new Set();
+    for(const bmk of Object.keys(modelDispMap)){
+      const {brand}=modelDispMap[bmk];
+      if(/citro[eë]n/i.test(brand)) citroenBrands.add(bmk);
+    }
+    for(const [ck,ct] of Object.entries(combTrigMap)){
+      if(comboSet.has(ck)||!ct) continue;
+      const p=ck.split('|'), date=p[0], brandL=p[1], modelL=p[2];
+      const bmk=`${brandL}|${modelL}`;
+      if(!citroenBrands.has(bmk)) continue;
+      const disp=modelDispMap[bmk]; if(!disp) continue;
+      const seg=refSeg[bmk]||brandRefSeg[brandL]||segMap[ck]||'';
+      _rows.push({date,brand:disp.brand,model:disp.model,month:monthLabel(date),segment:seg,
+        awSpend:0,awLeads:0,awTrig:awTrigMap[ck]||0,
+        fbSpend:0,fbLeads:0,fbTrig:fbTrigMap[ck]||0,
+        ctwaSpend:0,ctwaLeads:0,ctwaTrig:ctwaTrigMap[ck]||0,
+        combSpend:0,combLeads:0,combTrig:ct});
+    }
+    _rows.sort((a,b)=>a.date.localeCompare(b.date)||a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model));
     applyRatesToRows(); populateFilters(); applyFilters(); renderDemand();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('statusChip').textContent=`${_rows.length} rows · ${ts}`;
