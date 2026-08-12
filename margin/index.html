@@ -769,8 +769,9 @@ function monthLabel(dateStr){
 
 function getBuGroup(bu){
   const l=(bu||'').toLowerCase();
-  if(['search','demand gen','pmax','adwords','google'].some(t=>l.includes(t))) return 'Adwords';
-  if(['ctwa','ms-fb','ms_fb','meta','facebook'].some(t=>l.includes(t))) return 'MS-FB';
+  if(['search','demand gen','pmax','adwords','google','display','youtube','video','uac','app campaign','performance max'].some(t=>l.includes(t))) return 'Adwords';
+  if(['ctwa','ms-fb','ms_fb','meta','facebook','instagram'].some(t=>l.includes(t))) return 'MS-FB';
+  if(l.includes('whatsapp')||l==='ctwa') return 'CTWA';
   return 'Other';
 }
 
@@ -921,9 +922,9 @@ async function loadData(){
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand.toLowerCase()}|${v.model.toLowerCase()}`;
       const buL=v.bu.toLowerCase();
-      if(v.buGroup==='Adwords'){ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
-      else if(buL==='ctwa'||buL==='ctwa (meta)'||buL.includes('whatsapp')){ if(!ctwaMap[ck]) ctwaMap[ck]={spends:0,leads:0}; ctwaMap[ck].spends+=v.spends; ctwaMap[ck].leads+=v.leads; }
+      if(buL==='ctwa'||buL==='ctwa (meta)'||buL.includes('whatsapp')||v.buGroup==='CTWA'){ if(!ctwaMap[ck]) ctwaMap[ck]={spends:0,leads:0}; ctwaMap[ck].spends+=v.spends; ctwaMap[ck].leads+=v.leads; }
       else if(v.buGroup==='MS-FB'){ if(!fbMap[ck]) fbMap[ck]={spends:0,leads:0}; fbMap[ck].spends+=v.spends; fbMap[ck].leads+=v.leads; }
+      else{ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
     }
     // Per-channel trigger maps
     const awTrigMap={}, fbTrigMap={}, ctwaTrigMap={};
