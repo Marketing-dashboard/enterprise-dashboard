@@ -684,7 +684,7 @@ async function loadRates(){
       if(/^ms_?fb$/i.test(ch)||/meta/i.test(ch)||/facebook/i.test(ch)) ch='MS-FB';
       else if(/^adwords$/i.test(ch)||/google/i.test(ch)||/pmax/i.test(ch)||/search/i.test(ch)) ch='Adwords';
       else if(/^ctwa$/i.test(ch)||/whatsapp/i.test(ch)) ch='CTWA';
-      const key=`${brand}||${model}||${ch}`;
+      const key=`${brand.toLowerCase()}||${model.toLowerCase()}||${ch}`;
       const valRaw=(r[vi]||'').replace('%','').trim();
       const val=parseFloat(valRaw); if(!isNaN(val)&&val>=0) _rates.validation[key]=val;
       const cpl=parseFloat((r[si]||'').replace(/,/g,'')); if(!isNaN(cpl)&&cpl>0) _rates.soldCPL[key]=cpl;
@@ -694,7 +694,7 @@ async function loadRates(){
 
 function applyRatesToRows(){
   for(const r of _rows){
-    const bm=`${r.brand}||${r.model}`;
+    const bm=`${r.brand.toLowerCase()}||${r.model.toLowerCase()}`;
     const awV=(_rates.validation[`${bm}||Adwords`]??0)/100;
     const fbV=(_rates.validation[`${bm}||MS-FB`]??0)/100;
     const ctV=(_rates.validation[`${bm}||CTWA`]??0)/100;
@@ -1055,6 +1055,7 @@ const KPI_DEFS=[
   {key:'tleads',  label:'TLeads'},
   {key:'pvl',     label:'PVL'},
   {key:'soldcpl', label:'Sold CPL'},
+  {key:'valpct',  label:'Val %'},
   {key:'cpl',     label:'CPL'},
   {key:'tcpl',    label:'TCPL'},
   {key:'revenue', label:'Revenue'},
@@ -1093,18 +1094,20 @@ function renderTable(){
   const fmtCPL=(s,l)=>l>0?'₹'+Math.round(s/l).toLocaleString('en-IN'):'';
   const fmtSC=v=>v>0?'₹'+Math.round(v).toLocaleString('en-IN'):'';
 
-  // active KPI count per channel (soldcpl not shown for combined)
+  // rate-only cols not shown for combined or brand summary rows
+  const rateOnly=new Set(['soldcpl','valpct']);
   const kpiCount=KPI_DEFS.filter(k=>V.has(k.key)).length;
-  const kpiCountComb=KPI_DEFS.filter(k=>V.has(k.key)&&k.key!=='soldcpl').length;
+  const kpiCountComb=KPI_DEFS.filter(k=>V.has(k.key)&&!rateOnly.has(k.key)).length;
 
-  // chCells: S=spends L=leads T=tleads PVL Rev Mgn SC=soldCPL (0 for combined)
-  const chCells=(cls,S,L,T,PVL,Rev,Mgn,SC,isComb)=>{
+  // chCells: SC=soldCPL VP=val% (0/blank for combined & brand summary)
+  const chCells=(cls,S,L,T,PVL,Rev,Mgn,SC,VP,isComb)=>{
     let td='';
     if(V.has('spends'))  td+=`<td class="td-num ${cls}">${fmtNum(S)}</td>`;
     if(V.has('leads'))   td+=`<td class="td-num ${cls}">${fmtL(L)}</td>`;
     if(V.has('tleads'))  td+=`<td class="td-num ${cls}">${T>0?fmtL(T):''}</td>`;
     if(V.has('pvl'))     td+=`<td class="td-num ${cls}">${fmtN(PVL)}</td>`;
     if(V.has('soldcpl')&&!isComb) td+=`<td class="td-num ${cls}">${fmtSC(SC)}</td>`;
+    if(V.has('valpct')&&!isComb)  td+=`<td class="td-num ${cls}">${VP>0?VP.toFixed(1)+'%':''}</td>`;
     if(V.has('cpl'))     td+=`<td class="td-num ${cls}">${fmtCPL(S,L)}</td>`;
     if(V.has('tcpl'))    td+=`<td class="td-num ${cls}">${T>0?fmtCPL(S,T):''}</td>`;
     if(V.has('revenue')) td+=`<td class="td-num ${cls} rev">${fmtRev(Rev)}</td>`;
@@ -1141,7 +1144,7 @@ function renderTable(){
   h+='<tr class="col-row"><th class="s0 left">Date</th><th class="s1 left">Brand</th><th class="s2 left">Model</th>';
   const chHdr=(cls,isComb)=>{
     let t='';
-    const defs=KPI_DEFS.filter(k=>V.has(k.key)&&!(isComb&&k.key==='soldcpl'));
+    const defs=KPI_DEFS.filter(k=>V.has(k.key)&&!(isComb&&rateOnly.has(k.key)));
     defs.forEach((k,i)=>{
       const first=i===0, last=i===defs.length-1;
       const extra=k.key==='revenue'?' th-rev':k.key==='margin'?' th-mrg':'';
@@ -1164,25 +1167,25 @@ function renderTable(){
     const icon=multi?`<span class="expand-icon" id="ei-${bkEnc(g.key)}">▶ </span>`:'';
     const onclick=multi?` onclick="toggleModels('${bkEnc(g.key)}')"`:' style="cursor:default"';
     h+=`<tr class="brand-row"${onclick}><td class="s0" style="white-space:nowrap">${fmtDate(g.date)}</td><td class="s1">${icon}${escH(g.brand)}</td><td class="s2" style="color:var(--text3);font-weight:400;font-size:11px">${multi?nc+' models':escH(g.models[0].model)}</td>`;
-    h+=chCells('aw',g.awS,g.awL,g.awT,g.awPVL,g.awRev,g.awMgn,0,false);
-    h+=chCells('fb',g.fbS,g.fbL,g.fbT,g.fbPVL,g.fbRev,g.fbMgn,0,false);
-    h+=chCells('ctwa',g.ctwaS,g.ctwaL,g.ctwaT,g.ctwaPVL,g.ctwaRev,g.ctwaMgn,0,false);
-    h+=chCells('comb',g.cS,g.cL,g.cT,g.cPVL,g.cRev,g.cMgn,0,true);
+    h+=chCells('aw',g.awS,g.awL,g.awT,g.awPVL,g.awRev,g.awMgn,0,0,false);
+    h+=chCells('fb',g.fbS,g.fbL,g.fbT,g.fbPVL,g.fbRev,g.fbMgn,0,0,false);
+    h+=chCells('ctwa',g.ctwaS,g.ctwaL,g.ctwaT,g.ctwaPVL,g.ctwaRev,g.ctwaMgn,0,0,false);
+    h+=chCells('comb',g.cS,g.cL,g.cT,g.cPVL,g.cRev,g.cMgn,0,0,true);
     h+='</tr>';
     if(multi) for(const r of g.models){
       h+=`<tr class="model-row hidden" data-bk="${bkEnc(g.key)}"><td class="s0"></td><td class="s1"></td><td class="s2" style="padding-left:20px">${escH(r.model)}</td>`;
-      h+=chCells('aw',r.awSpend,r.awLeads,r.awTrig,r.awPVL||0,r.awRev||0,r.awMgn||0,r.awSoldCPL||0,false);
-      h+=chCells('fb',r.fbSpend,r.fbLeads,r.fbTrig,r.fbPVL||0,r.fbRev||0,r.fbMgn||0,r.fbSoldCPL||0,false);
-      h+=chCells('ctwa',r.ctwaSpend,r.ctwaLeads,r.ctwaTrig,r.ctwaPVL||0,r.ctwaRev||0,r.ctwaMgn||0,r.ctwaSoldCPL||0,false);
-      h+=chCells('comb',r.combSpend,r.combLeads,r.combTrig,r.combPVL||0,r.combRev||0,r.combMgn||0,0,true);
+      h+=chCells('aw',r.awSpend,r.awLeads,r.awTrig,r.awPVL||0,r.awRev||0,r.awMgn||0,r.awSoldCPL||0,r.awValPct||0,false);
+      h+=chCells('fb',r.fbSpend,r.fbLeads,r.fbTrig,r.fbPVL||0,r.fbRev||0,r.fbMgn||0,r.fbSoldCPL||0,r.fbValPct||0,false);
+      h+=chCells('ctwa',r.ctwaSpend,r.ctwaLeads,r.ctwaTrig,r.ctwaPVL||0,r.ctwaRev||0,r.ctwaMgn||0,r.ctwaSoldCPL||0,r.ctwaValPct||0,false);
+      h+=chCells('comb',r.combSpend,r.combLeads,r.combTrig,r.combPVL||0,r.combRev||0,r.combMgn||0,0,0,true);
       h+='</tr>';
     }
   }
   h+='</tbody><tfoot><tr><td class="s0 left" style="font-weight:700">TOTAL</td><td class="s1"></td><td class="s2"></td>';
-  h+=chCells('aw',tot.awS,tot.awL,tot.awT,tot.awPVL,tot.awRev,tot.awMgn,0,false);
-  h+=chCells('fb',tot.fbS,tot.fbL,tot.fbT,tot.fbPVL,tot.fbRev,tot.fbMgn,0,false);
-  h+=chCells('ctwa',tot.ctwaS,tot.ctwaL,tot.ctwaT,tot.ctwaPVL,tot.ctwaRev,tot.ctwaMgn,0,false);
-  h+=chCells('comb',tot.cS,tot.cL,tot.cT,tot.cPVL,tot.cRev,tot.cMgn,0,true);
+  h+=chCells('aw',tot.awS,tot.awL,tot.awT,tot.awPVL,tot.awRev,tot.awMgn,0,0,false);
+  h+=chCells('fb',tot.fbS,tot.fbL,tot.fbT,tot.fbPVL,tot.fbRev,tot.fbMgn,0,0,false);
+  h+=chCells('ctwa',tot.ctwaS,tot.ctwaL,tot.ctwaT,tot.ctwaPVL,tot.ctwaRev,tot.ctwaMgn,0,0,false);
+  h+=chCells('comb',tot.cS,tot.cL,tot.cT,tot.cPVL,tot.cRev,tot.cMgn,0,0,true);
   h+='</tr></tfoot></table>';
   document.getElementById('tableContainer').innerHTML=h;
 }
