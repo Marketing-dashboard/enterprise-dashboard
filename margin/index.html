@@ -659,15 +659,32 @@ const RATES_DOC = () => db.collection('enterprise_rates').doc('rates_v1');
 const RATE_CHS  = ['Adwords','MS-FB','CTWA'];
 
 async function loadRates(){
+  _rates={soldCPL:{},validation:{}};
   try{
-    const snap=await RATES_DOC().get();
-    if(snap.exists){
-      const d=snap.data();
-      _rates={soldCPL:d.soldCPL||{},validation:d.validation||{}};
-    } else {
-      _rates={soldCPL:{},validation:{}};
+    const resp=await fetch(RATES_URL+'&t='+Date.now());
+    const text=await resp.text();
+    const rows=parseCSV(text);
+    if(!rows.length) return;
+    const hdr=rows[0].map(h=>h.toLowerCase().replace(/[\s_]/g,''));
+    const bi=hdr.findIndex(h=>h==='brand');
+    const mi=hdr.findIndex(h=>h==='model');
+    const chi=hdr.findIndex(h=>h==='channel');
+    const vi=hdr.findIndex(h=>h.includes('validation'));
+    const si=hdr.findIndex(h=>h.includes('sold'));
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i];
+      const brand=(r[bi]||'').trim(), model=(r[mi]||'').trim();
+      if(!brand||!model) continue;
+      let ch=(r[chi]||'').trim();
+      if(/^ms_?fb$/i.test(ch)||/meta/i.test(ch)||/facebook/i.test(ch)) ch='MS-FB';
+      else if(/^adwords$/i.test(ch)||/google/i.test(ch)||/pmax/i.test(ch)||/search/i.test(ch)) ch='Adwords';
+      else if(/^ctwa$/i.test(ch)||/whatsapp/i.test(ch)) ch='CTWA';
+      const key=`${brand}||${model}||${ch}`;
+      const valRaw=(r[vi]||'').replace('%','').trim();
+      const val=parseFloat(valRaw); if(!isNaN(val)&&val>=0) _rates.validation[key]=val;
+      const cpl=parseFloat((r[si]||'').replace(/,/g,'')); if(!isNaN(cpl)&&cpl>0) _rates.soldCPL[key]=cpl;
     }
-  }catch(e){ console.warn('Rates load failed',e); _rates={soldCPL:{},validation:{}}; }
+  }catch(e){ console.warn('Rates load failed',e); }
 }
 
 function applyRatesToRows(){
