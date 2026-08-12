@@ -672,11 +672,12 @@ function applyRatesToRows(){
     const bm=`${r.brand.toLowerCase()}||${r.model.toLowerCase()}`;
     const awV=(_rates.validation[`${bm}||Adwords`]??0)/100;
     const fbV=(_rates.validation[`${bm}||MS-FB`]??0)/100;
-    const ctV=(_rates.validation[`${bm}||CTWA`]??0)/100;
-    const awC=_rates.soldCPL[`${bm}||Adwords`]||0;
-    const fbC=_rates.soldCPL[`${bm}||MS-FB`]||0;
     const brandModelStr=(r.brand+' '+r.model).toLowerCase();
     const isHmsiBigwing=brandModelStr.includes('bigwing')||(r.brand.toLowerCase().includes('hmsi')&&brandModelStr.includes('big'));
+    const ctVraw=_rates.validation[`${bm}||CTWA`];
+    const ctV=(ctVraw!=null?ctVraw:(isHmsiBigwing?_rates.validation[`${bm}||MS-FB`]??0:0))/100;
+    const awC=_rates.soldCPL[`${bm}||Adwords`]||0;
+    const fbC=_rates.soldCPL[`${bm}||MS-FB`]||0;
     const ctC=_rates.soldCPL[`${bm}||CTWA`]||(isHmsiBigwing?fbC:0);
     r.awPVL =r.awTrig *awV; r.awRev =r.awPVL *awC; r.awMgn =r.awRev -r.awSpend;
     r.fbPVL =r.fbTrig *fbV; r.fbRev =r.fbPVL *fbC; r.fbMgn =r.fbRev -r.fbSpend;
