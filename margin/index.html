@@ -772,7 +772,7 @@ async function loadData(){
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
     // Triggers — keyed by campaign type (if column exists) or source; lowercase brand|model in keys
-    _trigMap={}; const trigMap=_trigMap, segMap={};
+    _trigMap={}; const trigMap=_trigMap, segMap={}, origCTMap={};
     const combTrigMap={};
     const parsedTrig=parseCSV(tT);
     const hasTrigCTCol=parsedTrig.some(r=>makeRow(r)('campaigntype'));
@@ -801,6 +801,7 @@ async function loadData(){
       const k=`${date}|${fbL}|${fmL}|${ct.toLowerCase()}`;
       if(!trigMap[k]) trigMap[k]=0;
       trigMap[k]+=trig;
+      if(!origCTMap[k]) origCTMap[k]=ct;
       const ck=`${date}|${fbL}|${fmL}`;
       if(!combTrigMap[ck]) combTrigMap[ck]=0;
       combTrigMap[ck]+=trig;
@@ -826,13 +827,31 @@ async function loadData(){
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
     for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
-    // Campaign-type rows (for hierarchical view) — built after trigMap is ready
+    // Campaign-type rows — one per entMap row, plus trigger-only rows with no spend
     _ctRows=[];
+    const ctRowKeys=new Set();
     for(const v of Object.values(entMap)){
       const ck=`${v.date}|${v.brand.toLowerCase()}|${v.model.toLowerCase()}`;
       let buKey=v.bu; if(/^ms_?fb$/i.test(buKey)) buKey='MS-FB';
-      const tleads=trigMap[`${ck}|${buKey.toLowerCase()}`]||0;
+      const tkL=`${ck}|${buKey.toLowerCase()}`;
+      const tleads=trigMap[tkL]||0;
+      ctRowKeys.add(tkL);
       _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads,tleads});
+    }
+    // Build brand/model display-name lookup from comboMeta (keyed by brandL|modelL, any date)
+    const modelDispMap={};
+    for(const [ck,meta] of Object.entries(comboMeta)){
+      const p=ck.split('|'), bmk=`${p[1]}|${p[2]}`;
+      if(!modelDispMap[bmk]) modelDispMap[bmk]={brand:meta.brand,model:meta.model,segment:meta.segment};
+    }
+    // Add trigger-only rows (triggers for a CT that has no spend row in Enterprise_Raw)
+    for(const [k,trig] of Object.entries(trigMap)){
+      if(ctRowKeys.has(k)||!trig) continue;
+      const p=k.split('|'), date=p[0], brandL=p[1], modelL=p[2];
+      const bmk=`${brandL}|${modelL}`;
+      const disp=modelDispMap[bmk]; if(!disp) continue; // only include known brands/models
+      const ct=origCTMap[k]||p[3];
+      _ctRows.push({date,brand:disp.brand,model:disp.model,campaignType:ct,buGroup:getBuGroup(ct),month:monthLabel(date),segment:disp.segment||'',spends:0,leads:0,tleads:trig});
     }
     // Aggregate spend/leads per channel (Adwords / MS-FB / CTWA) — lowercase keys
     const awMap={}, fbMap={}, ctwaMap={};
