@@ -811,22 +811,30 @@ async function loadData(){
     const entMap={};
     const parsedEnt=parseCSV(eT);
     const hasCTCol=parsedEnt.some(r=>(r['Campaign Type']||'').trim());
-    // Pass 1: collect date|brand|model keys (lowercase) that have at least one CT-specific row
-    const ctKeys=new Set();
+    // Pass 1: for each date|brand|model, track which buGroups are already covered by CT rows
+    // so blank-CT rows are only skipped when their channel group is already represented
+    const ctCoveredGroups={};
     if(hasCTCol){
       for(const r of parsedEnt){
         if(!(r['Campaign Type']||'').trim()) continue;
         const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
-        if(date&&brand&&model) ctKeys.add(`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`);
+        if(!date||!brand||!model) continue;
+        const ck=`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`;
+        const grp=getBuGroup((r['Campaign Type']||'').trim());
+        if(!ctCoveredGroups[ck]) ctCoveredGroups[ck]=new Set();
+        ctCoveredGroups[ck].add(grp);
       }
     }
-    // Pass 2: build entMap — key uses lowercase brand/model; stored values keep original case for display
+    // Pass 2: build entMap — skip blank-CT rows only if their buGroup is already covered by CT rows
     for(const r of parsedEnt){
       const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
       const bu=(r['BU Type']||'').trim();
       const rawCT=hasCTCol?(r['Campaign Type']||'').trim():'';
       const ck=`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`;
-      if(hasCTCol && ctKeys.has(ck) && !rawCT) continue;
+      if(hasCTCol && ctCoveredGroups[ck] && !rawCT){
+        const buGrp=getBuGroup(bu);
+        if(ctCoveredGroups[ck].has(buGrp)) continue;
+      }
       const ct=rawCT||bu;
       if(!date||!brand||!model||!ct) continue;
       const month=monthLabel(date);
