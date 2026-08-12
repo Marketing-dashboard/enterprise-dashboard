@@ -1064,7 +1064,7 @@ function renderTable(){
     return a.model.localeCompare(b.model);
   });
   const fmtRev=v=>v>0?'₹'+Math.round(v).toLocaleString('en-IN'):'';
-  const fmtMgn=v=>v===0?'':v>0?`<span style="color:#15803d">₹${Math.round(v).toLocaleString('en-IN')}</span>`:`<span style="color:#dc2626">-₹${Math.round(Math.abs(v)).toLocaleString('en-IN')}</span>`;
+  const fmtMgn=(S,Rev)=>{if(!Rev||Rev===0)return '';const pct=(1-S/Rev)*100;return pct>=0?`<span style="color:#15803d">${pct.toFixed(1)}%</span>`:`<span style="color:#dc2626">${pct.toFixed(1)}%</span>`;};
   const fmtN=v=>v>0?Math.round(v).toLocaleString('en-IN'):'';
   const fmtCPL=(s,l)=>l>0?'₹'+Math.round(s/l).toLocaleString('en-IN'):'';
   const fmtSC=v=>v>0?'₹'+Math.round(v).toLocaleString('en-IN'):'';
@@ -1086,7 +1086,7 @@ function renderTable(){
     if(V.has('cpl'))     td+=`<td class="td-num ${cls}">${fmtCPL(S,L)}</td>`;
     if(V.has('tcpl'))    td+=`<td class="td-num ${cls}">${T>0?fmtCPL(S,T):''}</td>`;
     if(V.has('revenue')) td+=`<td class="td-num ${cls} rev">${fmtRev(Rev)}</td>`;
-    if(V.has('margin'))  td+=`<td class="td-num ${cls}">${Mgn!==0?fmtMgn(Mgn):''}</td>`;
+    if(V.has('margin'))  td+=`<td class="td-num ${cls}">${fmtMgn(S,Rev)}</td>`;
     return td;
   };
 
