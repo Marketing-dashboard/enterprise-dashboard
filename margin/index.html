@@ -580,6 +580,11 @@ let   _isAdmin = false;
 let   _adminTab = 'pending';
 
 // ── AUTH STATE ──
+// Handle redirect result first (from signInWithRedirect)
+auth.getRedirectResult().then(result => {
+  if (result && result.user) { /* handled by onAuthStateChanged */ }
+}).catch(e => { if(e.code !== 'auth/no-auth-event') showError(e.message); });
+
 auth.onAuthStateChanged(async user => {
   if (!user) { showScreen('login'); return; }
   const email = user.email || '';
@@ -649,8 +654,9 @@ function showError(msg) {
 async function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account', hd: DOMAIN });
-  try { await auth.signInWithPopup(provider); }
-  catch(e) { if (e.code !== 'auth/popup-closed-by-user') showError(e.message); }
+  // Use redirect (works on GitHub Pages without authorized domain setup)
+  try { await auth.signInWithRedirect(provider); }
+  catch(e) { showError(e.message); }
 }
 async function signOutUser() {
   await auth.signOut();
