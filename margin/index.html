@@ -561,6 +561,23 @@ td.mrg-neg{color:#dc2626}
 // ══════════════════════════════════════════
 //  FIREBASE INIT
 // ══════════════════════════════════════════
+// Catch ALL JS errors and show on login screen
+window.onerror = function(msg, src, line, col, err) {
+  var d = document.getElementById('loginError');
+  if(d){ d.textContent = 'Error: ' + msg + ' (line ' + line + ')'; d.style.display='block'; }
+};
+window.addEventListener('unhandledrejection', function(e){
+  var d = document.getElementById('loginError');
+  if(d){ d.textContent = 'Auth error: ' + (e.reason?.message || e.reason || 'Unknown'); d.style.display='block'; }
+});
+// Check Firebase SDK loaded
+if(typeof firebase === 'undefined'){
+  document.addEventListener('DOMContentLoaded', function(){
+    var d = document.getElementById('loginError');
+    if(d){ d.textContent = 'Firebase SDK failed to load. Check internet connection and reload.'; d.style.display='block'; }
+  });
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyAch2mNDt8dygEX3WiYRMj82b619nA2pYE",
   authDomain: "marketing-dashboard-3e114.firebaseapp.com",
