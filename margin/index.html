@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Enterprise Daily Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -349,6 +348,10 @@ td.mrg-neg{color:#dc2626}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2.69M20 15a8 8 0 0 1-14.93 2.69"/></svg>
         Refresh
       </button>
+      <div class="nav-user" title="Signed in">
+        <img id="navAvatar" src="" style="display:none">
+        <span class="nav-user-name" id="navUserName"></span>
+      </div>
     </div>
   </nav>
 
@@ -491,16 +494,37 @@ td.mrg-neg{color:#dc2626}
 
 </div><!-- /#app -->
 
+<!-- ═══════ ADMIN PANEL ═══════ -->
+<button class="admin-fab" id="adminFab" onclick="openAdmin()" title="Admin Panel">⚙️</button>
+
+<div class="admin-overlay" id="adminOverlay" onclick="closeAdminIfOutside(event)">
+  <div class="admin-panel">
+    <div class="admin-panel-header">
+      <span class="admin-panel-title">🔐 Access Management</span>
+      <button class="admin-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" id="atab-pending"  onclick="switchAdminTab('pending')">Pending <span class="badge-count red" id="pendingCount" style="display:none">0</span></button>
+      <button class="admin-tab"        id="atab-approved" onclick="switchAdminTab('approved')">Approved</button>
+      <button class="admin-tab"        id="atab-revoked"  onclick="switchAdminTab('revoked')">Revoked</button>
+    </div>
+    <div class="admin-body" id="adminBody">
+      <div class="admin-empty">Loading…</div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════
-// ── DATA URLS ──
+//  FIREBASE INIT
+// ══════════════════════════════════════════
+// DATA URLS
 const ENT_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=1372441356';
 const TRIG_URL   = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=942825587';
 const DEMAND_URL = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=728789513';
 const REF_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=0';
 const HISTORY_URL= 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=111630822';
 
-// ── INIT ──
 loadRates().then(loadData);
 
 
