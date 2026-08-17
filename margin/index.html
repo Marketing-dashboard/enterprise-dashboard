@@ -633,6 +633,15 @@ function getBuGroup(bu){
   return 'Other';
 }
 
+const _BIKE_BRANDS=new Set(['hero','tvs','yamaha','bajaj','royal enfield','honda','hmsi','hmsi redwing','hmsi bigwing','ktm','triumph','harley','harley davidson','indian motorcycle','jawa','ather','ola','ola electric','bounce','bgauss','ampere','kinetic','okinawa','tork','battre ev','rovolt','joy','simple energy','oben rorr','matter ev','ultraviolette','vida','river','quantum ev','numeros','atumobile','tvs iqube','bajaj chetak']);
+function getSegment(brand){
+  const b=(brand||'').toLowerCase().trim();
+  if(_BIKE_BRANDS.has(b)) return 'Bike';
+  // partial match for compound brand names
+  for(const bb of _BIKE_BRANDS) if(b.includes(bb)||bb.includes(b)) return 'Bike';
+  return 'Car';
+}
+
 
 loadRates().then(loadData);
 
@@ -756,10 +765,10 @@ async function loadData(){
       if(!comboMeta[ck]) comboMeta[ck]={date:v.date,brand:v.brand,model:v.model,month:v.month,segment:''};
       if(!comboMeta[ck].segment) comboMeta[ck].segment=v.segment||segMap[ck]||'';
     }
-    // Fill missing segments using brand-level fallback
+    // Fill missing segments using brand-level fallback, then getSegment
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
-    for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||'';
+    for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||getSegment(m.brand);
     // Campaign-type rows — one per entMap row, plus trigger-only rows with no spend
     _ctRows=[];
     const ctRowKeys=new Set();
