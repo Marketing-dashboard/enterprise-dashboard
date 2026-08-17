@@ -374,7 +374,7 @@ td.mrg-neg{color:#dc2626}
       </div>
       <div class="filter-group">
         <label>Segment</label>
-        <select id="f-segment" onchange="applyFilters()"><option value="">All Segments</option></select>
+        <select id="f-segment" onchange="onSegmentChange()"><option value="">All Segments</option></select>
       </div>
       <div class="filter-group">
         <label>Model</label>
@@ -864,21 +864,23 @@ function switchTab(tab){
 
 function populateFilters(){
   const months=[...new Set(_rows.map(r=>r.month))].filter(Boolean).sort();
-  const brands=[...new Set(_rows.map(r=>r.brand))].filter(Boolean).sort();
   const segments=[...new Set(_rows.map(r=>r.segment))].filter(Boolean).sort();
+  const sSel=document.getElementById('f-segment'), scur=sSel.value;
+  sSel.innerHTML='<option value="">All Segments</option>'+segments.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(scur) sSel.value=scur;
+  // Brands filtered by currently selected segment
+  const selSeg=sSel.value;
+  const brands=[...new Set(_rows.filter(r=>!selSeg||r.segment===selSeg).map(r=>r.brand))].filter(Boolean).sort();
   const mSel=document.getElementById('f-month'), cur=mSel.value;
   mSel.innerHTML='<option value="">All Months</option>'+months.map(m=>`<option value="${m}">${m}</option>`).join('');
   if(cur) mSel.value=cur;
   const bSel=document.getElementById('f-brand'), bcur=bSel.value;
   bSel.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option value="${b}">${b}</option>`).join('');
-  if(bcur) bSel.value=bcur;
-  // Populate Campaign Analysis brand filter
+  if(brands.includes(bcur)) bSel.value=bcur; else bSel.value='';
+  // Populate Campaign Analysis brand filter (same segment filter)
   const caBSel=document.getElementById('ca-brand'), caBcur=caBSel.value;
   caBSel.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option value="${b}">${b}</option>`).join('');
-  if(caBcur) caBSel.value=caBcur;
-  const sSel=document.getElementById('f-segment'), scur=sSel.value;
-  sSel.innerHTML='<option value="">All Segments</option>'+segments.map(s=>`<option value="${s}">${s}</option>`).join('');
-  if(scur) sSel.value=scur;
+  if(brands.includes(caBcur)) caBSel.value=caBcur; else caBSel.value='';
   const dates=_rows.map(r=>r.date).sort();
   if(dates.length){
     const fd=document.getElementById('f-from'), td=document.getElementById('f-to');
@@ -886,8 +888,16 @@ function populateFilters(){
     fd.min=dates[0]; fd.max=dates[dates.length-1]; td.min=dates[0]; td.max=dates[dates.length-1];
   }
 }
+function onSegmentChange(){
+  // Reset brand & model when segment changes, then repopulate brands for the new segment
+  document.getElementById('f-brand').value='';
+  document.getElementById('f-model').value='';
+  populateFilters();
+  applyFilters();
+}
 function updateModelFilter(brand){
-  const models=[...new Set(_rows.filter(r=>!brand||r.brand===brand).map(r=>r.model))].filter(Boolean).sort();
+  const seg=document.getElementById('f-segment').value;
+  const models=[...new Set(_rows.filter(r=>(!brand||r.brand===brand)&&(!seg||r.segment===seg)).map(r=>r.model))].filter(Boolean).sort();
   const mSel=document.getElementById('f-model'), cur=mSel.value;
   mSel.innerHTML='<option value="">All Models</option>'+models.map(m=>`<option value="${m}">${m}</option>`).join('');
   if(models.includes(cur)) mSel.value=cur;
