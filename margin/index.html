@@ -633,11 +633,19 @@ function getBuGroup(bu){
   return 'Other';
 }
 
-const _BIKE_BRANDS=new Set(['hero','tvs','yamaha','bajaj','royal enfield','honda','hmsi','hmsi redwing','hmsi bigwing','ktm','triumph','harley','harley davidson','indian motorcycle','jawa','ather','ola','ola electric','bounce','bgauss','ampere','kinetic','okinawa','tork','battre ev','rovolt','joy','simple energy','oben rorr','matter ev','ultraviolette','vida','river','quantum ev','numeros','atumobile','tvs iqube','bajaj chetak']);
-function getSegment(brand){
+const _BIKE_BRANDS=new Set(['hero','tvs','yamaha','bajaj','royal enfield','hmsi','hmsi redwing','hmsi bigwing','ktm','triumph','harley','harley davidson','indian motorcycle','jawa','ather','ola','ola electric','bounce','bgauss','ampere','kinetic','okinawa','tork','battre ev','rovolt','joy','simple energy','oben rorr','matter ev','ultraviolette','vida','river','quantum ev','numeros','atumobile','tvs iqube','bajaj chetak']);
+// Honda car models — anything else from Honda brand is Bike
+const _HONDA_CAR_MODELS=new Set(['amaze','city','elevate','wr-v','jazz','brio','city hybrid','city e:hev']);
+function getSegment(brand,model){
   const b=(brand||'').toLowerCase().trim();
+  const m=(model||'').toLowerCase().trim();
+  // Honda: split by model
+  if(b==='honda'){
+    for(const cm of _HONDA_CAR_MODELS) if(m.includes(cm)) return 'Car';
+    return 'Bike';
+  }
   if(_BIKE_BRANDS.has(b)) return 'Bike';
-  // partial match for compound brand names
+  // partial match for compound brand names (e.g. "hmsi bigwing")
   for(const bb of _BIKE_BRANDS) if(b.includes(bb)||bb.includes(b)) return 'Bike';
   return 'Car';
 }
@@ -768,7 +776,7 @@ async function loadData(){
     // Fill missing segments using brand-level fallback, then getSegment
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
-    for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||getSegment(m.brand);
+    for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||getSegment(m.brand,m.model);
     // Campaign-type rows — one per entMap row, plus trigger-only rows with no spend
     _ctRows=[];
     const ctRowKeys=new Set();
