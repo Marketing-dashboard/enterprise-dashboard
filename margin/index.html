@@ -760,6 +760,10 @@ async function loadData(){
       // Normalize brand names that differ between trigger sheet and Enterprise_Raw
       const _BRAND_NORM={'mercedes-benz':'Mercedes'};
       if(_BRAND_NORM[fb.toLowerCase()]) fb=_BRAND_NORM[fb.toLowerCase()];
+      // Normalize model name variants to match the one with spend in Enterprise_Raw
+      const _MODEL_NORM={'mahindra pv':{'mahindra scorpion':'Mahindra Scorpio N'}};
+      const _mnMap=_MODEL_NORM[fb.toLowerCase()];
+      if(_mnMap&&_mnMap[fm.toLowerCase()]) fm=_mnMap[fm.toLowerCase()];
       let src=(g('finalsource')||g('final_source')||g('BUType')||g('source')).trim();
       if(src==='MS_FB'||src==='MSFB') src='MS-FB';
       if(!date||!fb||!fm) continue;
