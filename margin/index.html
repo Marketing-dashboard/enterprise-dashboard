@@ -1514,13 +1514,16 @@ function renderMOM(){
     document.getElementById('momTableWrap').innerHTML='<div class="empty">No data for selected filters.</div>';
     return;
   }
-  let h='<table class="mom-tbl"><thead><tr><th>Brand</th><th>Model</th>';
-  sortedMonths.forEach(mo=>{
-    if(activKPIs.length===1){
-      h+='<th>'+mo+'</th>';
-    } else {
-      activKPIs.forEach(kd=>{ h+='<th>'+mo+'<br><span style="font-weight:400;font-size:10px;color:var(--text3)">'+kd.label+'</span></th>'; });
-    }
+  const nk=activKPIs.length||1;
+  // Row 1: Brand | Model | Month (colspan=nk) per month
+  let h='<table class="mom-tbl"><thead>';
+  h+='<tr><th rowspan="2" style="vertical-align:middle">Brand</th><th rowspan="2" style="vertical-align:middle">Model</th>';
+  sortedMonths.forEach(mo=>{ h+=`<th colspan="${nk}" style="text-align:center;border-bottom:1px solid var(--border)">${mo}</th>`; });
+  h+='</tr>';
+  // Row 2: KPI sub-headers under each month
+  h+='<tr>';
+  sortedMonths.forEach(()=>{
+    activKPIs.forEach(kd=>{ h+=`<th style="font-weight:400;font-size:10px;color:var(--text3);white-space:nowrap">${kd.label}</th>`; });
   });
   h+='</tr></thead><tbody>';
 
