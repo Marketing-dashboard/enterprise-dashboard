@@ -297,15 +297,25 @@ td.mrg-neg{color:#dc2626}
 .mom-card-hd{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
 .mom-chart-wrap{padding:16px;position:relative;height:340px}
 .mom-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.mom-tbl thead tr:first-child th{padding:8px 14px 6px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text1);text-align:center;background:var(--surface2);white-space:nowrap;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border)}
-.mom-tbl thead tr:last-child th{padding:5px 14px 8px;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--text3);text-align:right;background:var(--surface2);white-space:nowrap;position:sticky;top:31px;z-index:2;border-bottom:2px solid var(--border)}
-.mom-tbl thead th:first-child,.mom-tbl thead th:nth-child(2){text-align:left}
+.mom-tbl thead th{padding:7px 12px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);text-align:right;background:var(--surface2);white-space:nowrap}
+.mom-tbl thead tr.mo-row th{font-size:11px;font-weight:700;color:var(--text1);text-align:center;padding:9px 12px 5px;border-top:2px solid var(--border)}
+.mom-tbl thead tr.mo-row th.mo-first{border-left:3px solid var(--primary,#4f6ef7)}
+.mom-tbl thead tr.mo-row th.mo-even{background:#f7f8fc}
+.mom-tbl thead tr.kpi-row th{padding:3px 12px 7px;border-bottom:2px solid var(--border)}
+.mom-tbl thead tr.kpi-row th.mo-first{border-left:3px solid var(--primary,#4f6ef7)}
+.mom-tbl thead tr.kpi-row th.mo-even{background:#f7f8fc}
+.mom-tbl thead th.col-brand,.mom-tbl thead th.col-model{text-align:left;background:var(--surface2)}
 .mom-tbl tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 .mom-tbl tbody tr:hover{background:#f5f7ff}
-.mom-tbl tbody td{padding:9px 14px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.mom-tbl tbody td.num{text-align:right}
-.mom-tbl tfoot td{padding:9px 14px;font-weight:700;text-align:right;background:var(--surface2);border-top:2px solid var(--border)}
-.mom-tbl tfoot td:first-child,.mom-tbl tfoot td:nth-child(2){text-align:left}
+.mom-tbl tbody td{padding:8px 12px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.mom-tbl tbody td.col-brand{text-align:left;font-weight:600}
+.mom-tbl tbody td.col-model{text-align:left}
+.mom-tbl tbody td.mo-first{border-left:3px solid var(--primary,#4f6ef7)}
+.mom-tbl tbody td.mo-even{background:#fafbff}
+.mom-tbl tfoot td{padding:8px 12px;font-weight:700;text-align:right;background:var(--surface2);border-top:2px solid var(--border)}
+.mom-tbl tfoot td.col-brand,.mom-tbl tfoot td.col-model{text-align:left}
+.mom-tbl tfoot td.mo-first{border-left:3px solid var(--primary,#4f6ef7)}
+.mom-tbl tfoot td.mo-even{background:#f0f2fa}
 .mom-tbl td.up{color:#15803d}
 .mom-tbl td.dn{color:#dc2626}
 .kpi-card{transition:box-shadow .15s}
@@ -1516,15 +1526,23 @@ function renderMOM(){
     return;
   }
   const nk=activKPIs.length||1;
-  // Row 1: Brand | Model | Month (colspan=nk) per month
+
+  // Helper: CSS classes for a month-group cell (first KPI col gets left border, even months get shade)
+  function moCls(mi,isFirst){ return (isFirst?'mo-first ':'')+((mi%2===1)?'mo-even ':''); }
+
   let h='<table class="mom-tbl"><thead>';
-  h+='<tr><th rowspan="2" style="vertical-align:middle">Brand</th><th rowspan="2" style="vertical-align:middle">Model</th>';
-  sortedMonths.forEach(mo=>{ h+=`<th colspan="${nk}" style="text-align:center;border-bottom:1px solid var(--border)">${mo}</th>`; });
+  // Row 1 — month labels
+  h+='<tr class="mo-row"><th class="col-brand"></th><th class="col-model"></th>';
+  sortedMonths.forEach((mo,mi)=>{
+    h+=`<th colspan="${nk}" class="${moCls(mi,true).trim()}">${mo}</th>`;
+  });
   h+='</tr>';
-  // Row 2: KPI sub-headers under each month
-  h+='<tr>';
-  sortedMonths.forEach(()=>{
-    activKPIs.forEach(kd=>{ h+=`<th style="font-weight:400;font-size:10px;color:var(--text3);white-space:nowrap">${kd.label}</th>`; });
+  // Row 2 — KPI sub-labels
+  h+='<tr class="kpi-row"><th class="col-brand">Brand</th><th class="col-model">Model</th>';
+  sortedMonths.forEach((mo,mi)=>{
+    activKPIs.forEach((kd,ki)=>{
+      h+=`<th class="${moCls(mi,ki===0).trim()}">${kd.label}</th>`;
+    });
   });
   h+='</tr></thead><tbody>';
 
@@ -1532,37 +1550,35 @@ function renderMOM(){
   sortedMonths.forEach(mo=>{ totals[mo]={spends:0,leads:0,tleads:0,revenue:0}; });
 
   series.forEach(s=>{
-    h+='<tr><td style="font-weight:600">'+escH(s.brand)+'</td><td>'+escH(s.model)+'</td>';
+    h+=`<tr><td class="col-brand">${escH(s.brand)}</td><td class="col-model">${escH(s.model)}</td>`;
     sortedMonths.forEach((mo,mi)=>{
       const row=s.data[mo];
       const emptyRow={spends:0,leads:0,tleads:0,revenue:0};
-      activKPIs.forEach(kd=>{
+      activKPIs.forEach((kd,ki)=>{
         const val=getMOMVal(kd,row||emptyRow);
         const disp=getMOMFmt(kd,row||emptyRow);
-        let cls='num';
+        let cls=moCls(mi,ki===0);
         if(!kd.derived&&val!==null&&mi>0){
-          const prevMo=sortedMonths[mi-1];
-          const pv=getMOMVal(kd,s.data[prevMo]||emptyRow);
+          const pv=getMOMVal(kd,s.data[sortedMonths[mi-1]]||emptyRow);
           if(pv!==null&&pv!==0) cls+=val>pv?' up':val<pv?' dn':'';
         }
-        if(!kd.derived&&val!==null&&row){
-          totals[mo][kd.key]=(totals[mo][kd.key]||0)+val;
-        }
-        h+='<td class="'+cls+'">'+disp+'</td>';
+        if(!kd.derived&&val!==null&&row) totals[mo][kd.key]=(totals[mo][kd.key]||0)+val;
+        h+=`<td class="${cls.trim()}">${disp}</td>`;
       });
     });
     h+='</tr>';
   });
 
-  h+='</tbody><tfoot><tr><td colspan="2" style="text-align:left">TOTAL</td>';
-  sortedMonths.forEach(mo=>{
+  h+='</tbody><tfoot><tr><td class="col-brand">TOTAL</td><td class="col-model"></td>';
+  sortedMonths.forEach((mo,mi)=>{
     const t=totals[mo];
-    activKPIs.forEach(kd=>{
-      if(kd.key==='cpl')    { h+='<td class="num">'+(t.leads>0?'Rs.'+Math.round(t.spends/t.leads).toLocaleString('en-IN'):'--')+'</td>'; return; }
-      if(kd.key==='tcpl')   { h+='<td class="num">'+(t.tleads>0?'Rs.'+Math.round(t.spends/t.tleads).toLocaleString('en-IN'):'--')+'</td>'; return; }
-      if(kd.key==='margin') { h+='<td class="num">'+(t.revenue>0?((1-t.spends/t.revenue)*100).toFixed(1)+'%':'--')+'</td>'; return; }
+    activKPIs.forEach((kd,ki)=>{
+      const bc=moCls(mi,ki===0).trim();
+      if(kd.key==='cpl')    { h+=`<td class="${bc}">${t.leads>0?'Rs.'+Math.round(t.spends/t.leads).toLocaleString('en-IN'):'--'}</td>`; return; }
+      if(kd.key==='tcpl')   { h+=`<td class="${bc}">${t.tleads>0?'Rs.'+Math.round(t.spends/t.tleads).toLocaleString('en-IN'):'--'}</td>`; return; }
+      if(kd.key==='margin') { h+=`<td class="${bc}">${t.revenue>0?((1-t.spends/t.revenue)*100).toFixed(1)+'%':'--'}</td>`; return; }
       const v=t[kd.key]||0;
-      h+='<td class="num">'+( v>0?kd.fmt(v):'--' )+'</td>';
+      h+=`<td class="${bc}">${v>0?kd.fmt(v):'--'}</td>`;
     });
   });
   h+='</tr></tfoot></table>';
