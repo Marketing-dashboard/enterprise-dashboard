@@ -452,14 +452,7 @@ td.mrg-neg{color:#dc2626}
     </div>
     <div class="mom-kpi-bar" id="momKpiBar"></div>
     <div class="mom-body">
-      <div class="mom-card">
-        <div class="mom-card-hd">
-          <span>Month-on-Month Trend</span>
-          <span id="momChartSub" style="font-size:11px;color:var(--text3);font-weight:400"></span>
-        </div>
-        <div class="mom-chart-wrap"><canvas id="momChart"></canvas></div>
-      </div>
-      <div class="mom-card">
+      <div class="mom-card" style="width:100%">
         <div class="mom-card-hd">MOM Comparison Table</div>
         <div style="overflow-x:auto" id="momTableWrap"><div class="loading"><div class="spinner"></div><span>Loading history data...</span></div></div>
       </div>
@@ -1348,7 +1341,7 @@ function renderDemand(){
   document.getElementById('demandContainer').innerHTML=h;
 }
 // ══════════════════════════ MOM ANALYSIS ══════════════════════════
-let _histRows=[], _momChart=null;
+let _histRows=[];
 const MOM_KPIS=[
   {key:'spends', label:'Spends',  derived:false, def:true,
    fmt:(v)=>'Rs.'+Math.round(v).toLocaleString('en-IN')},
@@ -1500,7 +1493,6 @@ function renderMOM(){
   }
 
   if(!Object.keys(agg).length){
-    document.getElementById('momChartSub').textContent='';
     document.getElementById('momTableWrap').innerHTML='<div class="empty">No data loaded yet.</div>';
     return;
   }
@@ -1516,46 +1508,6 @@ function renderMOM(){
   }
   const series=Object.values(seriesMap).sort((a,b)=>a.model.localeCompare(b.model));
   const activKPIs=MOM_KPIS.filter(k=>_momSelKPIs.has(k.key));
-
-  document.getElementById('momChartSub').textContent=
-    series.length+' model'+(series.length!==1?'s':'')+' \u00b7 '+sortedMonths.join(', ');
-
-  // Chart
-  const PALETTE=['#4f6ef7','#f97316','#7c3aed','#16a34a','#dc2626','#0891b2','#ca8a04','#be185d','#065f46','#92400e'];
-  const datasets=[];
-  series.forEach((s,si)=>{
-    activKPIs.forEach((kd,ki)=>{
-      const ci=(si*Math.max(activKPIs.length,1)+ki)%PALETTE.length;
-      const col=PALETTE[ci];
-      const lbl=activKPIs.length>1?s.model+' \u2013 '+kd.label:s.brand+' \u2013 '+s.model;
-      datasets.push({
-        label:lbl,
-        data:sortedMonths.map(mo=>{ const v=getMOMVal(kd,s.data[mo]); return v; }),
-        borderColor:col, backgroundColor:col+'30',
-        tension:.35, pointRadius:5, pointHoverRadius:7, fill:false, borderWidth:2
-      });
-    });
-  });
-
-  if(_momChart) _momChart.destroy();
-  const ctx=document.getElementById('momChart');
-  _momChart=new Chart(ctx,{
-    type:'line',
-    data:{labels:sortedMonths, datasets},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      interaction:{mode:'index', intersect:false},
-      plugins:{
-        legend:{position:'bottom',labels:{boxWidth:12,font:{size:11},padding:16}},
-        tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y.toLocaleString('en-IN'):'--')}}
-      },
-      scales:{
-        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11}}},
-        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11},
-           callback:v=>v>=1e7?(v/1e7).toFixed(1)+'Cr':v>=1e5?(v/1e5).toFixed(1)+'L':v>=1e3?Math.round(v/1e3)+'K':v}}
-      }
-    }
-  });
 
   // Table
   if(!series.length){
