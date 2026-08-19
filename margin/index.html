@@ -721,8 +721,13 @@ async function loadData(){
       }
     }
     // Pass 2: build entMap — skip blank-CT rows only if their buGroup is already covered by CT rows
+    // Normalize model name variants so spend+triggers merge into one row
+    const _ENT_MODEL_NORM={'mahindra pv':{'mahindra scorpion':'Mahindra Scorpio N'}};
     for(const r of parsedEnt){
-      const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
+      const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim();
+      let model=(r['Model']||'').trim();
+      const _emn=_ENT_MODEL_NORM[brand.toLowerCase()];
+      if(_emn&&_emn[model.toLowerCase()]) model=_emn[model.toLowerCase()];
       const bu=(r['BU Type']||'').trim();
       const rawCT=hasCTCol?(r['Campaign Type']||'').trim():'';
       const ck=`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`;
