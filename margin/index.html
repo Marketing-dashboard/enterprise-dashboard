@@ -738,6 +738,7 @@ async function loadData(){
     // Triggers — keyed by campaign type (if column exists) or source; lowercase brand|model in keys
     _trigMap={}; const trigMap=_trigMap, segMap={}, origCTMap={};
     const combTrigMap={};
+    const trigDispMap={};
     const parsedTrig=parseCSV(tT);
     const hasTrigCTCol=parsedTrig.some(r=>makeRow(r)('campaigntype'));
     for(const r of parsedTrig){
@@ -772,6 +773,8 @@ async function loadData(){
       const ck=`${date}|${fbL}|${fmL}`;
       if(!combTrigMap[ck]) combTrigMap[ck]=0;
       combTrigMap[ck]+=trig;
+      const bmkT=`${fbL}|${fmL}`;
+      if(!trigDispMap[bmkT]) trigDispMap[bmkT]={brand:fb,model:fm};
       const seg=g('Segment')||g('segment');
       if(seg) segMap[ck]=seg;
     }
@@ -816,9 +819,11 @@ async function loadData(){
       if(ctRowKeys.has(k)||!trig) continue;
       const p=k.split('|'), date=p[0], brandL=p[1], modelL=p[2];
       const bmk=`${brandL}|${modelL}`;
-      const disp=modelDispMap[bmk]; if(!disp) continue; // only include known brands/models
+      const disp=modelDispMap[bmk]||trigDispMap[bmk];
+      if(!disp) continue;
       const ct=origCTMap[k]||p[3];
-      _ctRows.push({date,brand:disp.brand,model:disp.model,campaignType:ct,buGroup:getBuGroup(ct),month:monthLabel(date),segment:disp.segment||'',spends:0,leads:0,tleads:trig});
+      const seg=(modelDispMap[bmk]||{}).segment||refSeg[bmk]||brandRefSeg[brandL]||segMap[`${date}|${bmk}`]||getSegment(disp.brand,disp.model);
+      _ctRows.push({date,brand:disp.brand,model:disp.model,campaignType:ct,buGroup:getBuGroup(ct),month:monthLabel(date),segment:seg,spends:0,leads:0,tleads:trig});
     }
     // Aggregate spend/leads per channel (Adwords / MS-FB / CTWA) — lowercase keys
     const awMap={}, fbMap={}, ctwaMap={};
@@ -853,8 +858,9 @@ async function loadData(){
       if(comboSet.has(ck)||!ct) continue;
       const p=ck.split('|'), date=p[0], brandL=p[1], modelL=p[2];
       const bmk=`${brandL}|${modelL}`;
-      const disp=modelDispMap[bmk]; if(!disp) continue;
-      const seg=refSeg[bmk]||brandRefSeg[brandL]||segMap[ck]||'';
+      const disp=modelDispMap[bmk]||trigDispMap[bmk];
+      if(!disp) continue;
+      const seg=refSeg[bmk]||brandRefSeg[brandL]||segMap[ck]||getSegment(disp.brand,disp.model);
       _rows.push({date,brand:disp.brand,model:disp.model,month:monthLabel(date),segment:seg,
         awSpend:0,awLeads:0,awTrig:awTrigMap[ck]||0,
         fbSpend:0,fbLeads:0,fbTrig:fbTrigMap[ck]||0,
