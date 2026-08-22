@@ -740,7 +740,9 @@ async function loadData(){
       }
       const ct=rawCT||bu;
       if(!date||!brand||!model||!ct) continue;
-      const month=monthLabel(date);
+      // Use sheet's Month column directly so end-of-month rows tagged to next month are respected
+      const rawMonth=(r['Month']||'').trim();
+      const month=rawMonth&&parseMoLabel(rawMonth).mo?rawMonth:monthLabel(date);
       const segment=refSeg[`${brand.toLowerCase()}|${model.toLowerCase()}`]||brandRefSeg[brand.toLowerCase()]||'';
       const k=`${ck}|${ct}`;
       if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
