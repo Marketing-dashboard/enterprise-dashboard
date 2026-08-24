@@ -868,7 +868,6 @@ async function loadData(){
       if(ct==='ms-fb') fbTrigMap[ck]=(fbTrigMap[ck]||0)+v;
       else if(ct==='ctwa') ctwaTrigMap[ck]=(ctwaTrigMap[ck]||0)+v;
       else if(ct==='adwords_ims') imsTrigMap[ck]=(imsTrigMap[ck]||0)+v;
-      else if(ct==='adwords_ims') imsTrigMap[ck]=(imsTrigMap[ck]||0)+v;
       else awTrigMap[ck]=(awTrigMap[ck]||0)+v;
     }
     _rows=[];
@@ -1082,7 +1081,7 @@ function renderTable(){
     g.fbS+=r.fbSpend;g.fbL+=r.fbLeads;g.fbT+=r.fbTrig;g.fbPVL+=(r.fbPVL||0);g.fbRev+=(r.fbRev||0);g.fbMgn+=(r.fbMgn||0);
     g.ctwaS+=r.ctwaSpend;g.ctwaL+=r.ctwaLeads;g.ctwaT+=r.ctwaTrig;g.ctwaPVL+=(r.ctwaPVL||0);g.ctwaRev+=(r.ctwaRev||0);g.ctwaMgn+=(r.ctwaMgn||0);
     g.imsS+=r.imsSpend||0;g.imsL+=r.imsLeads||0;g.imsT+=r.imsTrig||0;g.imsPVL+=(r.imsPVL||0);g.imsRev+=(r.imsRev||0);g.imsMgn+=(r.imsMgn||0);
-    g.imsS+=r.imsSpend||0;g.imsL+=r.imsLeads||0;g.imsT+=r.imsTrig||0;g.imsPVL+=(r.imsPVL||0);g.imsRev+=(r.imsRev||0);g.imsMgn+=(r.imsMgn||0);
+    
     g.cS+=r.combSpend;g.cL+=r.combLeads;g.cT+=r.combTrig;g.cPVL+=(r.combPVL||0);g.cRev+=(r.combRev||0);g.cMgn+=(r.combMgn||0);
     g.models.push(r);
   }
@@ -1092,7 +1091,6 @@ function renderTable(){
   h+=`<th class="th-aw" colspan="${kpiCount}">📊 Adwords</th>`;
   h+=`<th class="th-fb" colspan="${kpiCount}">📱 MS-FB</th>`;
   h+=`<th class="th-ctwa" colspan="${kpiCount}">💬 CTWA</th>`;
-  h+=`<th class="th-ims" colspan="${kpiCount}">🖥️ Adwords IMS</th>`;
   h+=`<th class="th-ims" colspan="${kpiCount}">🖥️ Adwords IMS</th>`;
   h+=`<th class="th-comb" colspan="${kpiCountComb}">🔗 Combined</th></tr>`;
   h+='<tr class="col-row"><th class="s0 left">Date</th><th class="s1 left">Brand</th><th class="s2 left">Model</th>';
@@ -1117,7 +1115,7 @@ function renderTable(){
     tot.fbS+=g.fbS;tot.fbL+=g.fbL;tot.fbT+=g.fbT;tot.fbPVL+=g.fbPVL;tot.fbRev+=g.fbRev;tot.fbMgn+=g.fbMgn;
     tot.ctwaS+=g.ctwaS;tot.ctwaL+=g.ctwaL;tot.ctwaT+=g.ctwaT;tot.ctwaPVL+=g.ctwaPVL;tot.ctwaRev+=g.ctwaRev;tot.ctwaMgn+=g.ctwaMgn;
     tot.imsS+=g.imsS;tot.imsL+=g.imsL;tot.imsT+=g.imsT;tot.imsPVL+=g.imsPVL;tot.imsRev+=g.imsRev;tot.imsMgn+=g.imsMgn;
-    tot.imsS+=g.imsS;tot.imsL+=g.imsL;tot.imsT+=g.imsT;tot.imsPVL+=g.imsPVL;tot.imsRev+=g.imsRev;tot.imsMgn+=g.imsMgn;
+    
     tot.cS+=g.cS;tot.cL+=g.cL;tot.cT+=g.cT;tot.cPVL+=g.cPVL;tot.cRev+=g.cRev;tot.cMgn+=g.cMgn;
     const nc=g.models.length, multi=nc>1;
     const icon=multi?`<span class="expand-icon" id="ei-${bkEnc(g.key)}">▶ </span>`:'';
@@ -1135,7 +1133,7 @@ function renderTable(){
       h+=chCells('fb',r.fbSpend,r.fbLeads,r.fbTrig,r.fbPVL||0,r.fbRev||0,r.fbMgn||0,r.fbSoldCPL||0,r.fbValPct||0,false);
       h+=chCells('ctwa',r.ctwaSpend,r.ctwaLeads,r.ctwaTrig,r.ctwaPVL||0,r.ctwaRev||0,r.ctwaMgn||0,r.ctwaSoldCPL||0,r.ctwaValPct||0,false);
       h+=chCells('ims',r.imsSpend||0,r.imsLeads||0,r.imsTrig||0,r.imsPVL||0,r.imsRev||0,r.imsMgn||0,r.imsSoldCPL||0,r.imsValPct||0,false);
-      h+=chCells('ims',r.imsSpend||0,r.imsLeads||0,r.imsTrig||0,r.imsPVL||0,r.imsRev||0,r.imsMgn||0,r.imsSoldCPL||0,r.imsValPct||0,false);
+      
       h+=chCells('comb',r.combSpend,r.combLeads,r.combTrig,r.combPVL||0,r.combRev||0,r.combMgn||0,0,0,true);
       h+='</tr>';
     }
@@ -1145,7 +1143,7 @@ function renderTable(){
   h+=chCells('fb',tot.fbS,tot.fbL,tot.fbT,tot.fbPVL,tot.fbRev,tot.fbMgn,0,0,false);
   h+=chCells('ctwa',tot.ctwaS,tot.ctwaL,tot.ctwaT,tot.ctwaPVL,tot.ctwaRev,tot.ctwaMgn,0,0,false);
   h+=chCells('ims',tot.imsS,tot.imsL,tot.imsT,tot.imsPVL,tot.imsRev,tot.imsMgn,0,0,false);
-  h+=chCells('ims',tot.imsS,tot.imsL,tot.imsT,tot.imsPVL,tot.imsRev,tot.imsMgn,0,0,false);
+  
   h+=chCells('comb',tot.cS,tot.cL,tot.cT,tot.cPVL,tot.cRev,tot.cMgn,0,0,true);
   h+='</tr></tfoot></table>';
   document.getElementById('tableContainer').innerHTML=h;
