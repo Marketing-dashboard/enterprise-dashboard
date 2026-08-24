@@ -751,7 +751,8 @@ async function loadData(){
       const month=rawMonth&&parseMoLabel(rawMonth).mo?rawMonth:monthLabel(date);
       const segment=refSeg[`${brand.toLowerCase()}|${model.toLowerCase()}`]||brandRefSeg[brand.toLowerCase()]||'';
       const k=`${ck}|${ct}`;
-      if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup:getBuGroup(ct),month,segment,spends:0,leads:0};
+      const buGroup=bu.toLowerCase()==='adwords_ims'?'Adwords_IMS':getBuGroup(ct);
+      if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup,month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
     // Triggers — keyed by campaign type (if column exists) or source; lowercase brand|model in keys
