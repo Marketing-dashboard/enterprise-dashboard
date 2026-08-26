@@ -884,6 +884,9 @@ async function loadData(){
         ctwaSpend:0,ctwaLeads:0,ctwaTrig:ctwaTrigMap[ck]||0,imsSpend:0,imsLeads:0,imsTrig:imsTrigMap[ck]||0,imsSpend:0,imsLeads:0,imsTrig:imsTrigMap[ck]||0,
         combSpend:0,combLeads:0,combTrig:ct});
     }
+    // Remove any rows with invalid brand/model values (e.g. #N/A, NA from GSheet errors)
+    const _isInvalid=v=>!v||v.startsWith('#')||/^n\/?a$/i.test(v.trim());
+    _rows=_rows.filter(r=>!_isInvalid(r.brand)&&!_isInvalid(r.model));
     _rows.sort((a,b)=>a.date.localeCompare(b.date)||a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model));
     applyRatesToRows(); populateFilters(); applyFilters(); renderDemand(); loadHistory();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
