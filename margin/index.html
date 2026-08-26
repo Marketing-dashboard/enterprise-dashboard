@@ -737,7 +737,7 @@ async function loadData(){
       for(const r of parsedEnt){
         if(!(r['Campaign Type']||'').trim()) continue;
         const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
-        if(!date||!brand||!model||brand.startsWith('#')||model.startsWith('#')||brand.toLowerCase()==='na'||model.toLowerCase()==='na') continue;
+        if(!date||!brand||!model) continue;
         const ck=`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`;
         const grp=getBuGroup((r['Campaign Type']||'').trim());
         if(!ctCoveredGroups[ck]) ctCoveredGroups[ck]=new Set();
@@ -761,7 +761,6 @@ async function loadData(){
       }
       const ct=rawCT||bu;
       if(!date||!brand||!model||!ct) continue;
-      if(brand.startsWith('#')||model.startsWith('#')||brand.toLowerCase()==='na'||model.toLowerCase()==='na') continue;
       // Use sheet's Month column directly so end-of-month rows tagged to next month are respected
       const rawMonth=(r['Month']||'').trim();
       const month=rawMonth&&parseMoLabel(rawMonth).mo?rawMonth:monthLabel(date);
@@ -884,9 +883,6 @@ async function loadData(){
         ctwaSpend:0,ctwaLeads:0,ctwaTrig:ctwaTrigMap[ck]||0,imsSpend:0,imsLeads:0,imsTrig:imsTrigMap[ck]||0,imsSpend:0,imsLeads:0,imsTrig:imsTrigMap[ck]||0,
         combSpend:0,combLeads:0,combTrig:ct});
     }
-    // Remove any rows with invalid brand/model values (e.g. #N/A, NA from GSheet errors)
-    const _isInvalid=v=>!v||v.startsWith('#')||/^n\/?a$/i.test(v.trim());
-    _rows=_rows.filter(r=>!_isInvalid(r.brand)&&!_isInvalid(r.model));
     _rows.sort((a,b)=>a.date.localeCompare(b.date)||a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model));
     applyRatesToRows(); populateFilters(); applyFilters(); renderDemand(); loadHistory();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
