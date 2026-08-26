@@ -737,7 +737,7 @@ async function loadData(){
       for(const r of parsedEnt){
         if(!(r['Campaign Type']||'').trim()) continue;
         const date=normalizeDate(r['Day']), brand=(r['Brand']||'').trim(), model=(r['Model']||'').trim();
-        if(!date||!brand||!model) continue;
+        if(!date||!brand||!model||brand.startsWith('#')||model.startsWith('#')||brand.toLowerCase()==='na'||model.toLowerCase()==='na') continue;
         const ck=`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`;
         const grp=getBuGroup((r['Campaign Type']||'').trim());
         if(!ctCoveredGroups[ck]) ctCoveredGroups[ck]=new Set();
@@ -761,6 +761,7 @@ async function loadData(){
       }
       const ct=rawCT||bu;
       if(!date||!brand||!model||!ct) continue;
+      if(brand.startsWith('#')||model.startsWith('#')||brand.toLowerCase()==='na'||model.toLowerCase()==='na') continue;
       // Use sheet's Month column directly so end-of-month rows tagged to next month are respected
       const rawMonth=(r['Month']||'').trim();
       const month=rawMonth&&parseMoLabel(rawMonth).mo?rawMonth:monthLabel(date);
