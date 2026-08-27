@@ -706,18 +706,18 @@ async function loadData(){
   document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   document.getElementById('demandContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   try{
-    const fetchCSV=(url,optional=false)=>{
+    const fetchCSV=(url)=>{
       const ctrl=new AbortController();
-      const t=setTimeout(()=>ctrl.abort(),20000);
+      const t=setTimeout(()=>ctrl.abort(),30000);
       return fetch(url,{headers:{'Accept-Encoding':'gzip,deflate'},signal:ctrl.signal})
-        .then(r=>r.text()).catch(e=>optional?'':Promise.reject(e)).finally(()=>clearTimeout(t));
+        .then(r=>r.text()).finally(()=>clearTimeout(t));
     };
-    const [eT,dT,refT,tT]=await Promise.all([
+    const [eT,dT,refT]=await Promise.all([
       fetchCSV(ENT_URL),
       fetchCSV(DEMAND_URL),
       fetchCSV(REF_URL),
-      fetchCSV(TRIG_URL,true),
     ]);
+    const trigTimedOut = false;
     // Build brand/model reference mapping + segment lookup
     const refMap={}, refSeg={}, brandRefSeg={};
     for(const r of parseCSV(refT)){
@@ -786,41 +786,19 @@ async function loadData(){
       if(!entMap[k]) entMap[k]={date,brand,model,bu:ct,buGroup,month,segment,spends:0,leads:0};
       entMap[k].spends+=pn(r['Cost']); entMap[k].leads+=pn(r['Leads']);
     }
-    // Triggers — fetched from GSheet Triggers_raw tab
+    // Triggers — from embedded _localTrigData (pre-aggregated from Excel files)
+    // Keys: "date|brand_lower|model_lower|channel"
     _trigMap={}; const trigMap=_trigMap, segMap={}, origCTMap={};
     const combTrigMap={};
     const trigDispMap={};
-    const parsedTrig=parseCSV(tT);
-    const hasTrigCTCol=parsedTrig.some(r=>(r['CampaignType']||r['campaigntype']||'').trim());
-    for(const r of parsedTrig){
-      const g=makeRow(r);
-      const date=normalizeDate(g('Date')||g('date')||g('Day')||g('day'));
-      if(!date) continue;
-      let fb=(g('brandmapped')||g('BrandMapped')||g('Brand_Mapped')||g('FinalBrand')||g('Brand_Mapping')||g('brand')||'').trim();
-      let fm=(g('modelmapped')||g('ModelMapped')||g('Model_Mapped')||g('FinalModel')||g('Model_Mapping')||g('model')||'').trim();
-      if(!fb||!fm) continue;
-      const src=(g('finalsource')||g('final_source')||g('Source')||'').trim();
-      let ct=hasTrigCTCol?(g('CampaignType')||g('campaigntype')||src).trim()||src:src;
-      if(/^ms_?fb$/i.test(ct)||/^meta$/i.test(ct)||/^facebook$/i.test(ct)) ct='MS-FB';
-      else if(/^ctwa$/i.test(ct)||/whatsapp/i.test(ct)||/rampwin.*meta/i.test(ct)) ct='CTWA';
-      else if(/^adwords_ims$/i.test(ct)) ct='Adwords_IMS';
-      else if(/^adwords$/i.test(ct)||/^google$/i.test(ct)||/^pmax$/i.test(ct)) ct='Adwords';
-      else continue; // skip Organic, Non_MS, CV etc.
-      const trig=pn(g('Triggered')||g('triggered'));
-      const listIdTrig=pn(g('Triggered in List_ID')||g('triggeredinlistid')||g('TriggeredinListID')||0);
-      // For Citroen: add List_ID triggers at 20% validation
-      const effectiveTrig = trig + (fb.toLowerCase().includes('citroen') ? listIdTrig * 0.20 : 0);
-      if(!effectiveTrig) continue;
-      const fbL=fb.toLowerCase(), fmL=fm.toLowerCase();
-      const k=`${date}|${fbL}|${fmL}|${ct.toLowerCase()}`;
-      trigMap[k]=(trigMap[k]||0)+effectiveTrig;
-      origCTMap[k]=ct;
+    for(const [k,v] of Object.entries(_localTrigData)){
+      if(!v||v<=0) continue;
+      const parts=k.split('|');
+      const date=parts[0], fbL=parts[1], fmL=parts[2], ct=parts[3];
       const ck=`${date}|${fbL}|${fmL}`;
-      combTrigMap[ck]=(combTrigMap[ck]||0)+effectiveTrig;
-      const bmkT=`${fbL}|${fmL}`;
-      if(!trigDispMap[bmkT]) trigDispMap[bmkT]={brand:fb,model:fm};
-      const seg=g('Segment')||g('segment');
-      if(seg) segMap[ck]=seg;
+      trigMap[k]=(trigMap[k]||0)+v;
+      origCTMap[k]=ct;
+      combTrigMap[ck]=(combTrigMap[ck]||0)+v;
     }
     // Pre-compute combined spend/leads per date|brand|model (lowercase key)
     const combMap={};
