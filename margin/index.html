@@ -824,18 +824,7 @@ async function loadData(){
         const seg=g('Segment')||g('segment');
         if(seg) segMap[ck]=seg;
       }
-    } else {
-      // Fallback: use embedded _localTrigData
-      for(const [k,v] of Object.entries(_localTrigData)){
-        if(!v||v<=0) continue;
-        const parts=k.split('|');
-        const date=parts[0], fbL=parts[1], fmL=parts[2], ct=parts[3];
-        const ck=`${date}|${fbL}|${fmL}`;
-        trigMap[k]=(trigMap[k]||0)+v;
-        origCTMap[k]=ct;
-        combTrigMap[ck]=(combTrigMap[ck]||0)+v;
-      }
-    }
+    } // if tT is null, triggers remain empty — spend/leads still show
     // Pre-compute combined spend/leads per date|brand|model (lowercase key)
     const combMap={};
     for(const v of Object.values(entMap)){
