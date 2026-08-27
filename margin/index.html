@@ -717,8 +717,9 @@ async function loadData(){
       fetchCSV(DEMAND_URL),
       fetchCSV(REF_URL),
     ]);
-    // Fetch triggers from GSheet with 60s timeout; fall back to embedded data if unavailable
-    const tT=await fetchCSV(TRIG_URL,60000).catch(()=>null);
+    // Fetch triggers from GSheet — 23MB file, needs long timeout
+    document.getElementById('statusChip').textContent='Loading triggers (large file)…';
+    const tT=await fetchCSV(TRIG_URL,120000).catch(()=>null);
     // Build brand/model reference mapping + segment lookup
     const refMap={}, refSeg={}, brandRefSeg={};
     for(const r of parseCSV(refT)){
