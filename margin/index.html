@@ -710,7 +710,7 @@ async function loadData(){
       fetch(ENT_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
       fetch(DEMAND_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
       fetch(REF_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
-      fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
+      fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()).catch(()=>''),
     ]);
     // Build brand/model reference mapping + segment lookup
     const refMap={}, refSeg={}, brandRefSeg={};
