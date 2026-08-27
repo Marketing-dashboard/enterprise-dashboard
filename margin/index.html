@@ -706,11 +706,17 @@ async function loadData(){
   document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   document.getElementById('demandContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   try{
+    const fetchCSV=(url,optional=false)=>{
+      const ctrl=new AbortController();
+      const t=setTimeout(()=>ctrl.abort(),20000);
+      return fetch(url,{headers:{'Accept-Encoding':'gzip,deflate'},signal:ctrl.signal})
+        .then(r=>r.text()).catch(e=>optional?'':Promise.reject(e)).finally(()=>clearTimeout(t));
+    };
     const [eT,dT,refT,tT]=await Promise.all([
-      fetch(ENT_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
-      fetch(DEMAND_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
-      fetch(REF_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()),
-      fetch(TRIG_URL,{headers:{'Accept-Encoding':'gzip,deflate'}}).then(r=>r.text()).catch(()=>''),
+      fetchCSV(ENT_URL),
+      fetchCSV(DEMAND_URL),
+      fetchCSV(REF_URL),
+      fetchCSV(TRIG_URL,true),
     ]);
     // Build brand/model reference mapping + segment lookup
     const refMap={}, refSeg={}, brandRefSeg={};
