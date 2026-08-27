@@ -801,13 +801,16 @@ async function loadData(){
       else if(/^adwords$/i.test(ct)||/^google$/i.test(ct)||/^pmax$/i.test(ct)) ct='Adwords';
       else continue; // skip Organic, Non_MS, CV etc.
       const trig=pn(g('Triggered')||g('triggered'));
-      if(!trig) continue;
+      const listIdTrig=pn(g('Triggered in List_ID')||g('triggeredinlistid')||g('TriggeredinListID')||0);
+      // For Citroen: add List_ID triggers at 20% validation
+      const effectiveTrig = trig + (fb.toLowerCase().includes('citroen') ? listIdTrig * 0.20 : 0);
+      if(!effectiveTrig) continue;
       const fbL=fb.toLowerCase(), fmL=fm.toLowerCase();
       const k=`${date}|${fbL}|${fmL}|${ct.toLowerCase()}`;
-      trigMap[k]=(trigMap[k]||0)+trig;
+      trigMap[k]=(trigMap[k]||0)+effectiveTrig;
       origCTMap[k]=ct;
       const ck=`${date}|${fbL}|${fmL}`;
-      combTrigMap[ck]=(combTrigMap[ck]||0)+trig;
+      combTrigMap[ck]=(combTrigMap[ck]||0)+effectiveTrig;
       const bmkT=`${fbL}|${fmL}`;
       if(!trigDispMap[bmkT]) trigDispMap[bmkT]={brand:fb,model:fm};
       const seg=g('Segment')||g('segment');
