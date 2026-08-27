@@ -812,7 +812,13 @@ async function loadData(){
         else continue;
         const trig=pn(g('Triggered')||g('triggered'));
         const listIdTrig=pn(g('Triggered in List_ID')||g('triggeredinlistid')||0);
-        const effectiveTrig=trig+(fb.toLowerCase().includes('citroen')?listIdTrig*0.20:0);
+        const fbLow=fb.toLowerCase();
+        const isJLR=fbLow.includes('jlr')||fbLow.includes('land rover')||fbLow.includes('jaguar');
+        const isLexus=fbLow.includes('lexus');
+        const isCitroen=fbLow.includes('citroen');
+        const useListId=isJLR||isLexus||isCitroen;
+        if(!trig&&!(useListId&&listIdTrig)) continue;
+        const effectiveTrig=trig+(isCitroen?listIdTrig*0.20:(useListId?listIdTrig:0));
         if(!effectiveTrig) continue;
         const fbL=fb.toLowerCase(), fmL=fm.toLowerCase();
         const k=`${date}|${fbL}|${fmL}|${ct.toLowerCase()}`;
