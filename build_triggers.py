@@ -167,20 +167,23 @@ else:
     content = content[:insert] + '\n' + embed_trig + content[insert:]
     print(f'  _localTrigData inserted ({len(TRIG_JSON)//1024}KB, {len(trig_agg)} keys)')
 
-# Replace loadRates
-new_fn = f'async function loadRates(){{_rates={{byMonth:{json.dumps(rates_by_month, ensure_ascii=False)}}}}}'
-old_start = content.find('async function loadRates()')
-if old_start >= 0:
-    depth, i = 0, old_start
-    while i < len(content):
-        if content[i] == '{': depth += 1
-        elif content[i] == '}':
-            depth -= 1
-            if depth == 0: break
-        i += 1
-    fn_start = content.rfind('\n', 0, old_start)
-    content = content[:fn_start] + '\n' + new_fn + '\n' + content[i+1:]
+# Replace loadRates — always a single line, so replace line-by-line
+new_fn = 'async function loadRates(){_rates={byMonth:' + json.dumps(rates_by_month, ensure_ascii=False) + '}}'
+lines = content.split('\n')
+replaced = False
+for idx, line in enumerate(lines):
+    if line.startswith('async function loadRates()'):
+        lines[idx] = new_fn
+        replaced = True
+        break
+if replaced:
+    content = '\n'.join(lines)
     print('  loadRates updated')
+else:
+    # Insert before loadRates().then(loadData)
+    insert = content.find('\nloadRates().then(loadData)')
+    content = content[:insert] + '\n' + new_fn + content[insert:]
+    print('  loadRates inserted')
 
 open(DASH_PATH, 'w', encoding='utf-8').write(content)
 print('\nDone! Now run:')
