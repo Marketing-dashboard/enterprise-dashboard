@@ -710,7 +710,7 @@ async function loadData(){
     const fetchCSV=(url,timeoutMs=30000)=>{
       const ctrl=new AbortController();
       const t=setTimeout(()=>ctrl.abort(),timeoutMs);
-      return fetch(url,{headers:{'Accept-Encoding':'gzip,deflate'},signal:ctrl.signal})
+      return fetch(url,{signal:ctrl.signal})
         .then(r=>r.text()).finally(()=>clearTimeout(t));
     };
     const [eT,dT,refT]=await Promise.all([
