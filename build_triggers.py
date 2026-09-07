@@ -71,9 +71,9 @@ for r in trig_rows:
     if not triggered and not (use_list_id and list_id_trig):
         continue
 
-    # Effective trigger count
+    # Effective trigger count (Citroen: full list_id count, same as JLR/Lexus)
     if is_citroen:
-        effective = triggered + list_id_trig * 0.20
+        effective = triggered + list_id_trig
     elif use_list_id:
         effective = triggered + list_id_trig
     else:
@@ -135,7 +135,9 @@ for sheet_name in wb.sheetnames:
         s_cpl   = ws.cell(row, hdr.get('Sold CPL', 6)).value
         if not brand or not model or not channel: continue
         ch  = CHANNEL_MAP.get(str(channel).strip().lower(), str(channel).strip())
-        key = f'{str(brand).strip().lower()}||{str(model).strip().lower()}||{ch}'
+        # Normalize hyphens→spaces in model so key matches GSheet model names
+        norm_model = str(model).strip().lower().replace('-', ' ')
+        key = f'{str(brand).strip().lower()}||{norm_model}||{ch}'
         if val_pct is not None:
             try:
                 v2 = float(str(val_pct).replace('%','').strip())
