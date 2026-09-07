@@ -112,6 +112,10 @@ print(f'  Skipped channels: {skipped_channel}')
 
 # ── 4. Build month-wise rates from Excel ──
 print('Building rates from Excel...')
+# Model aliases: Excel name → canonical GSheet name (lowercase, hyphens already removed)
+MODEL_ALIASES = {
+    'honda cb125 hornet': 'honda cb125',
+}
 CHANNEL_MAP = {
     'media sales-fb':'MS-FB','ms-fb':'MS-FB','ms_fb':'MS-FB',
     'media sales-ga':'Adwords','adwords':'Adwords',
@@ -135,8 +139,9 @@ for sheet_name in wb.sheetnames:
         s_cpl   = ws.cell(row, hdr.get('Sold CPL', 6)).value
         if not brand or not model or not channel: continue
         ch  = CHANNEL_MAP.get(str(channel).strip().lower(), str(channel).strip())
-        # Normalize hyphens→spaces in model so key matches GSheet model names
+        # Normalize hyphens→spaces and apply aliases so key matches GSheet model names
         norm_model = str(model).strip().lower().replace('-', ' ')
+        norm_model = MODEL_ALIASES.get(norm_model, norm_model)
         key = f'{str(brand).strip().lower()}||{norm_model}||{ch}'
         if val_pct is not None:
             try:
