@@ -367,7 +367,7 @@ td.mrg-neg{color:#dc2626}
         <button class="nav-tab active" id="tab-daily"    onclick="switchTab('daily')">Daily Performance</button>
         <button class="nav-tab"        id="tab-campaign" onclick="switchTab('campaign')">Campaign Analysis</button>
         <button class="nav-tab"        id="tab-demand"   onclick="switchTab('demand')">Demand vs Delivery</button>
-        <button class="nav-tab"        id="tab-mom"      onclick="switchTab('mom')">MOM Analysis</button>
+        <button class="nav-tab"        id="tab-google"   onclick="switchTab('google')">Google Campaigns</button>
       </div>
     </div>
     <div class="nav-right">
@@ -461,24 +461,26 @@ td.mrg-neg{color:#dc2626}
     </div>
   </div>
 
-  <!-- MOM ANALYSIS SECTION -->
-  <div id="momSection">
-    <div class="mom-filters">
+  <!-- GOOGLE CAMPAIGNS SECTION -->
+  <div id="googleCampSection" style="display:none">
+    <div class="filters">
       <div class="filter-group">
         <label>Brand</label>
-        <select id="mom-brand" onchange="onMOMBrandChange()"><option value="">All Brands</option></select>
+        <select id="gc-brand" onchange="onGCBrandChange()"><option value="">All Brands</option></select>
       </div>
       <div class="filter-group">
         <label>Model</label>
-        <select id="mom-model" onchange="renderMOM()"><option value="">All Models</option></select>
+        <select id="gc-model" onchange="renderGoogleCamp()"><option value="">All Models</option></select>
       </div>
-      <button class="reset-btn" onclick="document.getElementById('mom-brand').value='';document.getElementById('mom-model').innerHTML='<option value=\'\'>All Models</option>';renderMOM()">Reset</button>
+      <button class="reset-btn" onclick="document.getElementById('gc-brand').value='';document.getElementById('gc-model').innerHTML='<option value=\'\'> All Models</option>';renderGoogleCamp()">Reset</button>
     </div>
-    <div class="mom-kpi-bar" id="momKpiBar"></div>
-    <div class="mom-body">
-      <div class="mom-card" style="width:100%">
-        <div class="mom-card-hd">MOM Comparison Table</div>
-        <div style="overflow-x:auto" id="momTableWrap"><div class="loading"><div class="spinner"></div><span>Loading history data...</span></div></div>
+    <div class="table-wrap">
+      <div class="table-card">
+        <div class="table-header-bar">
+          <span class="table-title">Google Campaigns — MTD Performance</span>
+          <span class="row-count" id="gcRowCount"></span>
+        </div>
+        <div id="gcContainer"><div class="loading"><div class="spinner"></div><span>Loading…</span></div></div>
       </div>
     </div>
   </div>
@@ -603,7 +605,7 @@ const REF_URL    = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeW
 const RATES_URL  = 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=235359118';
 const HISTORY_URL= 'https://docs.google.com/spreadsheets/d/1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw/export?format=csv&gid=111630822';
 
-let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[];
+let _rows=[], _filtered=[], _demandMap={}, _trigMap={}, _ctRows=[], _campRows=[];
 let _rates={byMonth:{}};
 
 function pn(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
@@ -832,6 +834,27 @@ async function loadData(){
     const brandSegMap={};
     for(const m of Object.values(comboMeta)) if(m.segment) brandSegMap[m.brand]=m.segment;
     for(const m of Object.values(comboMeta)) if(!m.segment) m.segment=brandSegMap[m.brand]||getSegment(m.brand,m.model);
+    // Google campaign rows — per brand|model|campaignName for Adwords rows
+    _campRows=[];
+    {
+      const gcAgg={};
+      for(const r of parsedEnt){
+        const rawCT=(r['Campaign Type']||'').trim();
+        const bu=(r['BU Type']||'').trim();
+        const src=rawCT||bu;
+        if(getBuGroup(src)!=='Adwords') continue;
+        const rawBrand=(r['Brand']||'').trim(); if(!rawBrand) continue;
+        const brand=_brandCanon[rawBrand.toLowerCase()]||rawBrand;
+        let model=(r['Model']||'').trim(); if(!model) continue;
+        const _emn=_ENT_MODEL_NORM[brand.toLowerCase()];
+        if(_emn&&_emn[model.toLowerCase()]) model=_emn[model.toLowerCase()];
+        const campName=(r['Campaigns']||'').trim()||src;
+        const ck=`${brand.toLowerCase()}||${model.toLowerCase()}||${campName}`;
+        if(!gcAgg[ck]) gcAgg[ck]={brand,model,campName,spends:0,leads:0};
+        gcAgg[ck].spends+=pn(r['Cost']); gcAgg[ck].leads+=pn(r['Leads']);
+      }
+      _campRows=Object.values(gcAgg);
+    }
     // Campaign-type rows — one per entMap row, plus trigger-only rows with no spend
     _ctRows=[];
     const ctRowKeys=new Set();
@@ -907,7 +930,7 @@ async function loadData(){
         combSpend:0,combLeads:0,combTrig:ct});
     }
     _rows.sort((a,b)=>a.date.localeCompare(b.date)||a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model));
-    applyRatesToRows(); populateFilters(); applyFilters(); renderDemand(); loadHistory();
+    applyRatesToRows(); populateFilters(); applyFilters(); renderDemand(); populateGCFilters();
     const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('statusChip').textContent=`${_rows.length} rows · ${ts}`;
   }catch(e){
@@ -923,13 +946,13 @@ function switchTab(tab){
   document.getElementById('dailySection').style.display    =tab==='daily'   ?'block':'none';
   document.getElementById('campaignSection').style.display =tab==='campaign'?'block':'none';
   document.getElementById('demandSection').style.display   =tab==='demand'  ?'block':'none';
-  document.getElementById('momSection').style.display      =tab==='mom'     ?'block':'none';
+  document.getElementById('googleCampSection').style.display=tab==='google'  ?'block':'none';
   document.getElementById('tab-daily').classList.toggle('active',tab==='daily');
   document.getElementById('tab-campaign').classList.toggle('active',tab==='campaign');
   document.getElementById('tab-demand').classList.toggle('active',tab==='demand');
-  document.getElementById('tab-mom').classList.toggle('active',tab==='mom');
+  document.getElementById('tab-google').classList.toggle('active',tab==='google');
   if(tab==='campaign') renderCampaign();
-  if(tab==='mom') renderMOM();
+  if(tab==='google') renderGoogleCamp();
 }
 
 function populateFilters(){
@@ -1414,7 +1437,7 @@ function renderDemand(){
   h+='</tbody></table>';
   document.getElementById('demandContainer').innerHTML=h;
 }
-// ══════════════════════════ MOM ANALYSIS ══════════════════════════
+// ══════════════════════════ GOOGLE CAMPAIGNS ══════════════════════════
 let _histRows=[];
 const MOM_KPIS=[
   {key:'spends', label:'Spends',  derived:false, def:true,
@@ -1465,187 +1488,96 @@ function getMOMFmt(kd, r){
   return kd.fmt(v);
 }
 
-async function loadHistory(){
-  try{
-    const resp=await fetch(HISTORY_URL+'&t='+Date.now());
-    const text=await resp.text();
-    _histRows=parseCSV(text);
-    populateMOMFilters();
-  }catch(e){ console.warn('History load failed',e); }
-}
-
-function renderMOMKpiBar(){
-  const bar=document.getElementById('momKpiBar');
-  let h='<span class="mom-kpi-label">KPIs:</span>';
-  MOM_KPIS.forEach(k=>{
-    const on=_momSelKPIs.has(k.key);
-    h+=`<label class="mom-chip${on?' active':''}">`;
-    h+=`<input type="checkbox" ${on?'checked':''} onchange="toggleMOMKpi('${k.key}',this.checked)">`;
-    h+=`${k.label}</label>`;
-  });
-  bar.innerHTML=h;
-}
-
-function toggleMOMKpi(key, on){
-  if(on) _momSelKPIs.add(key); else _momSelKPIs.delete(key);
-  document.querySelectorAll('#momKpiBar .mom-chip').forEach((el,i)=>{
-    el.classList.toggle('active', _momSelKPIs.has(MOM_KPIS[i].key));
-  });
-  renderMOM();
-}
-
-function populateMOMFilters(){
+function populateGCFilters(){
   const brands=new Set(), modelsByBrand={};
-  for(const r of _histRows){
-    const b=(r['Brand']||r['brand']||'').trim();
-    const m=(r['Model']||r['model']||'').trim();
-    if(!b||!m) continue;
-    brands.add(b);
-    if(!modelsByBrand[b]) modelsByBrand[b]=new Set();
-    modelsByBrand[b].add(m);
-  }
-  for(const r of _rows){
-    if(!r.brand||!r.model) continue;
+  for(const r of _campRows){
     brands.add(r.brand);
     if(!modelsByBrand[r.brand]) modelsByBrand[r.brand]=new Set();
     modelsByBrand[r.brand].add(r.model);
   }
-  const bSel=document.getElementById('mom-brand');
+  const bSel=document.getElementById('gc-brand');
+  if(!bSel) return;
   const curB=bSel.value;
   bSel.innerHTML='<option value="">All Brands</option>'+[...brands].sort().map(b=>`<option${b===curB?' selected':''}>${escH(b)}</option>`).join('');
-  const mSel=document.getElementById('mom-model');
+  const mSel=document.getElementById('gc-model');
   const curM=mSel.value;
   const filtBrands=curB?[curB]:[...brands];
-  const modSet=new Set(); filtBrands.forEach(b=>{ if(modelsByBrand[b]) modelsByBrand[b].forEach(m=>modSet.add(m)); });
+  const modSet=new Set();
+  filtBrands.forEach(b=>{ if(modelsByBrand[b]) modelsByBrand[b].forEach(m=>modSet.add(m)); });
   mSel.innerHTML='<option value="">All Models</option>'+[...modSet].sort().map(m=>`<option${m===curM?' selected':''}>${escH(m)}</option>`).join('');
-  renderMOMKpiBar();
-  renderMOM();
 }
 
-function onMOMBrandChange(){
-  populateMOMFilters();
+function onGCBrandChange(){
+  populateGCFilters();
+  renderGoogleCamp();
 }
 
-function renderMOM(){
-  const brand=document.getElementById('mom-brand').value;
-  const model=document.getElementById('mom-model').value;
+function renderGoogleCamp(){
+  const el=document.getElementById('gcContainer');
+  if(!el) return;
+  if(!_campRows.length){ el.innerHTML='<div class="empty">No data yet — refresh to load.</div>'; return; }
 
-  // Aggregate history rows by month|brand|model
-  const agg={};
-  const monthSet=new Set();
+  const brand=document.getElementById('gc-brand').value;
+  const model=document.getElementById('gc-model').value;
 
-  for(const r of _histRows){
-    const b=(r['Brand']||r['brand']||'').trim();
-    const m=(r['Model']||r['model']||'').trim();
-    const mo=(r['Month']||r['month']||r['MONTH']||'').trim();
-    if(!b||!m||!mo) continue;
-    if(brand&&b!==brand) continue;
-    if(model&&m!==model) continue;
-    monthSet.add(mo);
-    const k=mo+'|'+b+'|'+m;
-    if(!agg[k]) agg[k]={month:mo,brand:b,model:m,spends:0,leads:0,tleads:0,revenue:0};
-    agg[k].spends  +=pnH(r['Spends']  ||r['spends']  ||r['Cost']||0);
-    agg[k].leads   +=pnH(r['Leads']   ||r['leads']   ||0);
-    agg[k].tleads  +=pnH(r['Triggered MS']||r['TLeads']||r['tleads']||r['Triggered Leads']||0);
-    agg[k].revenue +=pnH(r['Revenue'] ||r['revenue'] ||0);
-  }
-
-  // Add current month from live _rows
-  const curMo=curMonthLabel();
+  // Build model-level Adwords trigger totals from _rows
+  const awTrigByBM={}, awLeadsByBM={};
   for(const r of _rows){
-    const b=r.brand, m=r.model;
-    if(!b||!m) continue;
-    if(brand&&b!==brand) continue;
-    if(model&&m!==model) continue;
-    monthSet.add(curMo);
-    const k=curMo+'|'+b+'|'+m;
-    if(!agg[k]) agg[k]={month:curMo,brand:b,model:m,spends:0,leads:0,tleads:0,revenue:0};
-    agg[k].spends  +=(r.combSpend||0);
-    agg[k].leads   +=(r.combLeads||0);
-    agg[k].tleads  +=(r.combTrig||0);
-    agg[k].revenue +=(r.combRev||0);
+    const bm=`${r.brand.toLowerCase()}||${r.model.toLowerCase()}`;
+    awTrigByBM[bm]=(awTrigByBM[bm]||0)+(r.awTrig||0);
+    awLeadsByBM[bm]=(awLeadsByBM[bm]||0)+(r.awLeads||0);
   }
 
-  if(!Object.keys(agg).length){
-    document.getElementById('momTableWrap').innerHTML='<div class="empty">No data loaded yet.</div>';
-    return;
+  // Filter and aggregate campaigns MTD
+  const filtered=_campRows.filter(r=>{
+    if(brand&&r.brand!==brand) return false;
+    if(model&&r.model!==model) return false;
+    return true;
+  }).sort((a,b)=>b.spends-a.spends);
+
+  if(!filtered.length){ el.innerHTML='<div class="empty">No campaigns for selected filters.</div>'; return; }
+  document.getElementById('gcRowCount').textContent=`${filtered.length} campaigns`;
+
+  const fmt=v=>'Rs.'+Math.round(v).toLocaleString('en-IN');
+  const fmtN=v=>Math.round(v).toLocaleString('en-IN');
+
+  let totS=0,totL=0,totT=0;
+  let h=`<table class="ca-table"><colgroup>
+    <col class="col-name"><col class="col-spends"><col class="col-leads"><col class="col-cpl"><col class="col-tleads"><col class="col-tcpl">
+  </colgroup><thead><tr>
+    <th style="text-align:left">Campaign</th>
+    <th>MTD Spends</th><th>MTD Leads</th><th>CPL</th>
+    <th>Triggered Leads</th><th>TCPL</th>
+  </tr></thead><tbody>`;
+
+  for(const r of filtered){
+    const bm=`${r.brand.toLowerCase()}||${r.model.toLowerCase()}`;
+    const modelTrig=awTrigByBM[bm]||0;
+    const modelLeads=awLeadsByBM[bm]||0;
+    // Distribute triggers proportionally by campaign leads share
+    const trig=modelLeads>0?modelTrig*(r.leads/modelLeads):0;
+    const cpl=r.leads>0?r.spends/r.leads:0;
+    const tcpl=trig>0?r.spends/trig:0;
+    totS+=r.spends; totL+=r.leads; totT+=trig;
+    h+=`<tr>
+      <td style="text-align:left;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escH(r.campName)}">${escH(r.brand)} › ${escH(r.model)} › ${escH(r.campName)}</td>
+      <td class="ca-num">${fmt(r.spends)}</td>
+      <td class="ca-num">${fmtN(r.leads)}</td>
+      <td class="ca-num">${cpl>0?fmt(cpl):'--'}</td>
+      <td class="ca-num">${trig>0?fmtN(trig):'--'}</td>
+      <td class="ca-num">${tcpl>0?fmt(tcpl):'--'}</td>
+    </tr>`;
   }
-
-  const sortedMonths=[...monthSet].sort(sortMoLabels);
-
-  // Group by brand|model series
-  const seriesMap={};
-  for(const v of Object.values(agg)){
-    const sk=v.brand+'|'+v.model;
-    if(!seriesMap[sk]) seriesMap[sk]={brand:v.brand,model:v.model,data:{}};
-    seriesMap[sk].data[v.month]=v;
-  }
-  const series=Object.values(seriesMap).sort((a,b)=>a.model.localeCompare(b.model));
-  const activKPIs=MOM_KPIS.filter(k=>_momSelKPIs.has(k.key));
-
-  // Table
-  if(!series.length){
-    document.getElementById('momTableWrap').innerHTML='<div class="empty">No data for selected filters.</div>';
-    return;
-  }
-  const nk=activKPIs.length||1;
-
-  // Helper: CSS classes for a month-group cell (first KPI col gets left border, even months get shade)
-  function moCls(mi,isFirst){ return (isFirst?'mo-first ':'')+((mi%2===1)?'mo-even ':''); }
-
-  let h='<table class="mom-tbl"><thead>';
-  // Row 1 — month labels
-  h+='<tr class="mo-row"><th class="col-brand"></th><th class="col-model"></th>';
-  sortedMonths.forEach((mo,mi)=>{
-    h+=`<th colspan="${nk}" class="${moCls(mi,true).trim()}">${mo}</th>`;
-  });
-  h+='</tr>';
-  // Row 2 — KPI sub-labels
-  h+='<tr class="kpi-row"><th class="col-brand">Brand</th><th class="col-model">Model</th>';
-  sortedMonths.forEach((mo,mi)=>{
-    activKPIs.forEach((kd,ki)=>{
-      h+=`<th class="${moCls(mi,ki===0).trim()}">${kd.label}</th>`;
-    });
-  });
-  h+='</tr></thead><tbody>';
-
-  const totals={};
-  sortedMonths.forEach(mo=>{ totals[mo]={spends:0,leads:0,tleads:0,revenue:0}; });
-
-  series.forEach(s=>{
-    h+=`<tr><td class="col-brand">${escH(s.brand)}</td><td class="col-model">${escH(s.model)}</td>`;
-    sortedMonths.forEach((mo,mi)=>{
-      const row=s.data[mo];
-      const emptyRow={spends:0,leads:0,tleads:0,revenue:0};
-      activKPIs.forEach((kd,ki)=>{
-        const val=getMOMVal(kd,row||emptyRow);
-        const disp=getMOMFmt(kd,row||emptyRow);
-        let cls=moCls(mi,ki===0);
-        if(!kd.derived&&val!==null&&mi>0){
-          const pv=getMOMVal(kd,s.data[sortedMonths[mi-1]]||emptyRow);
-          if(pv!==null&&pv!==0) cls+=val>pv?' up':val<pv?' dn':'';
-        }
-        if(!kd.derived&&val!==null&&row) totals[mo][kd.key]=(totals[mo][kd.key]||0)+val;
-        h+=`<td class="${cls.trim()}">${disp}</td>`;
-      });
-    });
-    h+='</tr>';
-  });
-
-  h+='</tbody><tfoot><tr><td class="col-brand">TOTAL</td><td class="col-model"></td>';
-  sortedMonths.forEach((mo,mi)=>{
-    const t=totals[mo];
-    activKPIs.forEach((kd,ki)=>{
-      const bc=moCls(mi,ki===0).trim();
-      if(kd.key==='cpl')    { h+=`<td class="${bc}">${t.leads>0?'Rs.'+Math.round(t.spends/t.leads).toLocaleString('en-IN'):'--'}</td>`; return; }
-      if(kd.key==='tcpl')   { h+=`<td class="${bc}">${t.tleads>0?'Rs.'+Math.round(t.spends/t.tleads).toLocaleString('en-IN'):'--'}</td>`; return; }
-      if(kd.key==='margin') { h+=`<td class="${bc}">${t.revenue>0?((1-t.spends/t.revenue)*100).toFixed(1)+'%':'--'}</td>`; return; }
-      const v=t[kd.key]||0;
-      h+=`<td class="${bc}">${v>0?kd.fmt(v):'--'}</td>`;
-    });
-  });
-  h+='</tr></tfoot></table>';
-  document.getElementById('momTableWrap').innerHTML=h;
+  const totCPL=totL>0?totS/totL:0, totTCPL=totT>0?totS/totT:0;
+  h+=`</tbody><tfoot><tr>
+    <td style="text-align:left;font-weight:700">TOTAL</td>
+    <td class="ca-num">${fmt(totS)}</td>
+    <td class="ca-num">${fmtN(totL)}</td>
+    <td class="ca-num">${totCPL>0?fmt(totCPL):'--'}</td>
+    <td class="ca-num">${totT>0?fmtN(totT):'--'}</td>
+    <td class="ca-num">${totTCPL>0?fmt(totTCPL):'--'}</td>
+  </tr></tfoot></table>`;
+  el.innerHTML=h;
 }
 
 </script>
