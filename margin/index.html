@@ -707,11 +707,11 @@ async function loadData(){
   document.getElementById('tableContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   document.getElementById('demandContainer').innerHTML='<div class="loading"><div class="spinner"></div><span>Fetching data…</span></div>';
   try{
-    const ts=Date.now();
+    const cacheBust=Date.now();
     const fetchCSV=(url,timeoutMs=30000)=>{
       const ctrl=new AbortController();
       const t=setTimeout(()=>ctrl.abort(),timeoutMs);
-      return fetch(url+'&t='+ts,{signal:ctrl.signal})
+      return fetch(url+'&t='+cacheBust,{signal:ctrl.signal})
         .then(r=>r.text()).finally(()=>clearTimeout(t));
     };
     const [eT,dT,refT]=await Promise.all([
