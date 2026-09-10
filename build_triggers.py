@@ -150,7 +150,7 @@ for sheet_name in wb.sheetnames:
                 validation[key] = round(v2, 4)
             except: pass
         if s_cpl is not None:
-            try: sold_cpl[key] = float(str(s_cpl).replace(',','').strip())
+            try: sold_cpl[key] = float(str(s_cpl).replace('₹','').replace(',','').strip())
             except: pass
     norm = sheet_name.replace('June','Jun').replace('July','Jul')
     rates_by_month[norm] = {'soldCPL': sold_cpl, 'validation': validation}
