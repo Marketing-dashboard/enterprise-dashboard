@@ -103,7 +103,23 @@ for r in trig_rows:
     except:
         date_str = date_raw
 
-    key = f"{date_str}|{brand_mapped.lower()}|{model_mapped.lower()}|{channel.lower()}"
+    # Normalize model names in trigger keys to match Enterprise_Raw model names
+    TRIG_MODEL_NORM = {
+        'mahindra pv': {
+            'xev 9s':          'mahindra xev 9s',
+            'xev 9e':          'mahindra xev 9e',
+            'xuv 7xo':         'mahindra xuv 7xo',
+            'xuv 3xo':         'mahindra xuv 3xo',
+            'bolero neo':      'mahindra bolero neo',
+            'mahindra bolero': 'mahindra bolero neo',   # short name → Bolero Neo
+            'mahindra scorpion': 'mahindra scorpio n',
+        },
+    }
+    brand_l = brand_mapped.lower()
+    model_l = model_mapped.lower()
+    if brand_l in TRIG_MODEL_NORM:
+        model_l = TRIG_MODEL_NORM[brand_l].get(model_l, model_l)
+    key = f"{date_str}|{brand_l}|{model_l}|{channel.lower()}"
     trig_agg[key] = trig_agg.get(key, 0) + effective
     total += effective
 
