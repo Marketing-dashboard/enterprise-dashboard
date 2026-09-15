@@ -837,7 +837,7 @@ async function loadData(){
     for(const k of Object.keys(_localTrigData)){
       const p=k.split('|'), brandL=p[1], modelL=p[2];
       const bmk=`${brandL}|${modelL}`;
-      if(!trigDispMap[bmk]) trigDispMap[bmk]={brand:toTitle(brandL),model:toTitle(modelL)};
+      if(!trigDispMap[bmk]) trigDispMap[bmk]={brand:_brandCanon[brandL]||toTitle(brandL),model:toTitle(modelL)};
     }
     // Fill missing segments using brand-level fallback, then getSegment
     const brandSegMap={};
