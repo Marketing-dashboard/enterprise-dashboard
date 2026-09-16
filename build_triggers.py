@@ -131,6 +131,13 @@ print('Building rates from Excel...')
 # Model aliases: Excel name → canonical GSheet name (lowercase, hyphens already removed)
 MODEL_ALIASES = {
     'honda cb125 hornet': 'honda cb125',
+    'ola': 'ola electric',                      # Excel uses 'Ola'; GSheet uses 'Ola Electric'
+    'mercedes-benz c-class': 'mercedes benz c class',
+    'mercedes-benz gla': 'mercedes benz gla',
+    'mercedes-benz glc': 'mercedes benz glc',
+    'mercedes-benz gle': 'mercedes benz gle',
+    'mercedes-benz v-class': 'mercedes benz v class',
+    'mercedes-benz a-class': 'mercedes benz a class',
 }
 CHANNEL_MAP = {
     'media sales-fb':'MS-FB','ms-fb':'MS-FB','ms_fb':'MS-FB',
