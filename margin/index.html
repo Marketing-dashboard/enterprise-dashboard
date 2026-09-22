@@ -768,12 +768,15 @@ async function loadData(){
     // Brand canonical-casing map: prefer mixed-case over ALL-CAPS for same brand
     const _brandCanon={};
     for(const r of parsedEnt){
+      if((r['Month']||'').trim()&&(r['Month']||'').trim()!=="Sep'26") continue;
       const b=(r['Brand']||'').trim(); if(!b||b==='#N/A'||b==='N/A') continue;
       const bl=b.toLowerCase();
       if(!_brandCanon[bl]){_brandCanon[bl]=b;}
       else if(_brandCanon[bl]===_brandCanon[bl].toUpperCase()&&b!==b.toUpperCase()){_brandCanon[bl]=b;}
     }
     for(const r of parsedEnt){
+      const mo=(r['Month']||'').trim();
+      if(mo && mo!=="Sep'26") continue;
       const date=normalizeDate(r['Day']);
       const rawBrand=(r['Brand']||'').trim();
       if(!rawBrand||rawBrand==='#N/A'||rawBrand==='N/A') continue;

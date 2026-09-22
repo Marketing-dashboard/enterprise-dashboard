@@ -42,7 +42,8 @@ ent_rows_raw = gsheet_csv(ENT_SHEET_ID, ENT_GID_NEW)
 # Filter: skip blank/N/A brands, only target BU Types
 ent_rows = [r for r in ent_rows_raw
             if (r.get('Brand') or '').strip() not in ('', '#N/A', 'N/A')
-            and (r.get('BU Type') or '').strip().lower() in VALID_BU_TYPES]
+            and (r.get('BU Type') or '').strip().lower() in VALID_BU_TYPES
+            and (r.get('Month') or '').strip() == "Sep'26"]
 spend_brands = set()
 for r in ent_rows:
     b = (r.get('Brand') or '').strip().lower()
