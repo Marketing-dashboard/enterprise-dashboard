@@ -675,7 +675,7 @@ function monthLabel(dateStr){
 function getBuGroup(bu){
   const l=(bu||'').toLowerCase();
   if(l==='adwords_ims') return 'Adwords_IMS';
-  if(l==='media sales-ga'||l==='media sales-ga_ims') return 'Adwords';
+  if(l==='media sales-ga') return 'Adwords';
   if(l==='media sales-fb') return 'MS-FB';
   if(l==='media sales-whatsapp'||l==='media sales-ctwa') return 'CTWA';
   if(['search','demand gen','pmax','adwords','google','display','youtube','video','uac','app campaign','performance max'].some(t=>l.includes(t))) return 'Adwords';
@@ -785,6 +785,7 @@ async function loadData(){
       const _emn=_ENT_MODEL_NORM[brand.toLowerCase()];
       if(_emn&&_emn[model.toLowerCase()]) model=_emn[model.toLowerCase()];
       const bu=(r['BU Type']||'').trim();
+      if(bu.toLowerCase()==='media sales-ga_ims') continue;
       const rawCT=hasCTCol?(r['Campaign Type']||'').trim():'';
       const ck=`${date}|${brand.toLowerCase()}|${model.toLowerCase()}`;
       if(hasCTCol && ctCoveredGroups[ck] && !rawCT){

@@ -18,7 +18,7 @@ EXCEL_PATH = r'C:\Users\Deepanshi Ahuja\Desktop\Enterprise-dashboard-sold_cpl.xl
 DASH_PATH  = os.path.join(os.path.dirname(__file__), 'margin', 'index.html')
 
 # BU Types to include from new spends sheet
-VALID_BU_TYPES = {'media sales-ga', 'media sales-fb', 'media sales-whatsapp'}
+VALID_BU_TYPES = {'media sales-ga', 'media sales-fb', 'media sales-whatsapp'}  # excludes media sales-ga_ims
 
 def gsheet_csv(sheet_id, gid):
     url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}'
