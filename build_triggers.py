@@ -9,15 +9,20 @@ Usage:
 import sys, os, json, csv, io, urllib.request, re, openpyxl
 sys.stdout.reconfigure(encoding='utf-8')
 
-SPREADSHEET_ID = '1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw'
-TRIG_GID   = '942825587'   # Triggers_raw tab
-ENT_GID    = '1372441356'  # Enterprise_Raw tab
+SPREADSHEET_ID = '1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw'  # old sheet (Demand/Ref tabs)
+ENT_SHEET_ID  = '1BCOWyyUTVmWkVIxKzMV28oZPhBWdlWAr_S1iEYVimJI'  # new spends sheet
+ENT_GID_NEW   = '0'
+TRIG_SHEET_ID = '1KXaUoUsEIrMHajuMGegVSYCnfeVmCLEfQFX9eujavp0'  # new triggers sheet
+TRIG_GID_NEW  = '0'
 EXCEL_PATH = r'C:\Users\Deepanshi Ahuja\Desktop\Enterprise-dashboard-sold_cpl.xlsx'
 DASH_PATH  = os.path.join(os.path.dirname(__file__), 'margin', 'index.html')
 
-def gsheet_csv(gid):
-    url = f'https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={gid}'
-    print(f'  Fetching gid={gid} ...', end=' ', flush=True)
+# BU Types to include from new spends sheet
+VALID_BU_TYPES = {'media sales-ga', 'media sales-fb', 'media sales-whatsapp'}
+
+def gsheet_csv(sheet_id, gid):
+    url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}'
+    print(f'  Fetching {sheet_id[:20]}... gid={gid} ...', end=' ', flush=True)
     data = urllib.request.urlopen(url, timeout=120).read().decode('utf-8-sig')
     rows = list(csv.DictReader(io.StringIO(data)))
     print(f'{len(rows):,} rows')
@@ -25,26 +30,30 @@ def gsheet_csv(gid):
 
 def src_to_channel(src):
     s = (src or '').strip().lower()
-    if s in ('ms_fb','ms-fb','meta','facebook','instagram'): return 'MS-FB'
-    if s in ('ctwa','ctwa (meta)','whatsapp','whatsapp_mkt','rampwin_meta_whatsapp','rampwin meta whatsapp'): return 'CTWA'
+    if s in ('ms_fb','ms-fb','meta','facebook','instagram','media sales-fb'): return 'MS-FB'
+    if s in ('ctwa','ctwa (meta)','whatsapp','whatsapp_mkt','rampwin_meta_whatsapp','rampwin meta whatsapp','media sales-whatsapp','media sales-ctwa'): return 'CTWA'
     if s == 'adwords_ims': return 'Adwords_IMS'
-    if s in ('adwords','google','pmax','demand_gen','uac','display','youtube','video'): return 'Adwords'
+    if s in ('adwords','google','pmax','demand_gen','uac','display','youtube','video','media sales-ga'): return 'Adwords'
     return None
 
-# ── 1. Fetch Enterprise_Raw to get valid brand/model set ──
-print('Fetching Enterprise_Raw...')
-ent_rows = gsheet_csv(ENT_GID)
+# ── 1. Fetch new spends sheet to get valid brand/model set ──
+print('Fetching spends sheet (Enterprise_Raw)...')
+ent_rows_raw = gsheet_csv(ENT_SHEET_ID, ENT_GID_NEW)
+# Filter: skip blank/N/A brands, only target BU Types
+ent_rows = [r for r in ent_rows_raw
+            if (r.get('Brand') or '').strip() not in ('', '#N/A', 'N/A')
+            and (r.get('BU Type') or '').strip().lower() in VALID_BU_TYPES]
 spend_brands = set()
 for r in ent_rows:
     b = (r.get('Brand') or '').strip().lower()
     m = (r.get('Model') or '').strip().lower()
     if b and m:
         spend_brands.add((b, m))
-print(f'  Enterprise brand/models: {len(spend_brands)}')
+print(f'  After filter: {len(ent_rows):,} rows, {len(spend_brands)} brand/models')
 
-# ── 2. Fetch Triggers_raw ──
-print('Fetching Triggers_raw...')
-trig_rows = gsheet_csv(TRIG_GID)
+# ── 2. Fetch new triggers sheet ──
+print('Fetching Triggers sheet...')
+trig_rows = gsheet_csv(TRIG_SHEET_ID, TRIG_GID_NEW)
 
 # ── 3. Aggregate triggers ──
 print('Aggregating triggers...')
@@ -175,7 +184,7 @@ for sheet_name in wb.sheetnames:
         if s_cpl is not None:
             try: sold_cpl[key] = float(str(s_cpl).replace('₹','').replace(',','').strip())
             except: pass
-    norm = sheet_name.replace('June','Jun').replace('July','Jul')
+    norm = sheet_name.replace('June','Jun').replace('July','Jul').replace('Sept','Sep')
     rates_by_month[norm] = {'soldCPL': sold_cpl, 'validation': validation}
     print(f'  {sheet_name}: {len(sold_cpl)} CPL, {len(validation)} validation rates')
 
