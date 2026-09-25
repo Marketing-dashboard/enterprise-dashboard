@@ -909,7 +909,7 @@ async function loadData(){
       else if(v.buGroup==='MS-FB'){ if(!fbMap[ck]) fbMap[ck]={spends:0,leads:0}; fbMap[ck].spends+=v.spends; fbMap[ck].leads+=v.leads; }
       else if(v.buGroup==='Adwords_IMS'){ if(!imsMap[ck]) imsMap[ck]={spends:0,leads:0}; imsMap[ck].spends+=v.spends; imsMap[ck].leads+=v.leads; }
       else if(v.buGroup==='Adwords_IMS'){ if(!imsMap[ck]) imsMap[ck]={spends:0,leads:0}; imsMap[ck].spends+=v.spends; imsMap[ck].leads+=v.leads; }
-      else{ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
+      else if(v.buGroup==='Adwords'){ if(!awMap[ck]) awMap[ck]={spends:0,leads:0}; awMap[ck].spends+=v.spends; awMap[ck].leads+=v.leads; }
     }
     // Per-channel trigger maps
     const awTrigMap={}, fbTrigMap={}, ctwaTrigMap={}, imsTrigMap={};
