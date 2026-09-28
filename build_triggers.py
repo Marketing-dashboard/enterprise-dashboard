@@ -121,7 +121,7 @@ for r in trig_rows:
             'xuv 7xo':         'mahindra xuv 7xo',
             'xuv 3xo':         'mahindra xuv 3xo',
             'bolero neo':      'mahindra bolero neo',
-            'mahindra bolero': 'mahindra bolero neo',   # short name → Bolero Neo
+            'mahindra bolero': 'mahindra bolero',
             'mahindra scorpion': 'mahindra scorpio n',
         },
     }
