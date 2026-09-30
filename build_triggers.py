@@ -72,7 +72,8 @@ for r in trig_rows:
     is_jlr     = 'jlr' in fb_low or 'land rover' in fb_low or 'jaguar' in fb_low
     is_lexus   = 'lexus' in fb_low
     is_citroen = 'citroen' in fb_low
-    use_list_id = is_jlr or is_lexus or is_citroen
+    is_river   = 'river' in fb_low
+    use_list_id = is_jlr or is_lexus or is_citroen or is_river
 
     triggered    = float(r.get('Triggered') or 0 or 0)
     list_id_trig = float(r.get('Triggered in List_ID') or 0 or 0)
@@ -81,10 +82,8 @@ for r in trig_rows:
     if not triggered and not (use_list_id and list_id_trig):
         continue
 
-    # Effective trigger count (Citroen: full list_id count, same as JLR/Lexus)
-    if is_citroen:
-        effective = triggered + list_id_trig
-    elif use_list_id:
+    # Effective trigger count
+    if use_list_id:
         effective = triggered + list_id_trig
     else:
         effective = triggered
