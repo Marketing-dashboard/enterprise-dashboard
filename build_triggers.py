@@ -12,7 +12,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 SPREADSHEET_ID = '1Pbckm2WZ3b0NGMiZ7QeWOuPRHPnUso1EVnETud6t1aw'  # old sheet (Demand/Ref tabs)
 ENT_SHEET_ID  = '1BCOWyyUTVmWkVIxKzMV28oZPhBWdlWAr_S1iEYVimJI'  # new spends sheet
 ENT_GID_NEW   = '0'
-TRIG_SHEET_ID = '1KXaUoUsEIrMHajuMGegVSYCnfeVmCLEfQFX9eujavp0'  # new triggers sheet
+TRIG_SHEET_ID = '1-zfVWep63EUMuedKEAcXAEV4gawJ1R3zYzvuadb8QLk'  # Oct'26 triggers sheet
 TRIG_GID_NEW  = '0'
 EXCEL_PATH = r'C:\Users\Deepanshi Ahuja\Desktop\Enterprise-dashboard-sold_cpl.xlsx'
 DASH_PATH  = os.path.join(os.path.dirname(__file__), 'margin', 'index.html')
@@ -43,7 +43,7 @@ ent_rows_raw = gsheet_csv(ENT_SHEET_ID, ENT_GID_NEW)
 ent_rows = [r for r in ent_rows_raw
             if (r.get('Brand') or '').strip() not in ('', '#N/A', 'N/A')
             and (r.get('BU Type') or '').strip().lower() in VALID_BU_TYPES
-            and (r.get('Month') or '').strip() == "Sep'26"]
+            and (r.get('Month') or '').strip() == "Oct'26"]
 spend_brands = set()
 for r in ent_rows:
     b = (r.get('Brand') or '').strip().lower()
