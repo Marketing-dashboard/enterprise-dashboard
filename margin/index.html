@@ -1052,6 +1052,7 @@ const KPI_DEFS=[
   {key:'spends',  label:'Spends'},
   {key:'leads',   label:'Leads'},
   {key:'tleads',  label:'TLeads'},
+  {key:'trigpct', label:'Trig %'},
   {key:'pvl',     label:'PVL'},
   {key:'soldcpl', label:'Sold CPL'},
   {key:'valpct',  label:'Val %'},
@@ -1104,6 +1105,7 @@ function renderTable(){
     if(V.has('spends'))  td+=`<td class="td-num ${cls}">${fmtNum(S)}</td>`;
     if(V.has('leads'))   td+=`<td class="td-num ${cls}">${fmtL(L)}</td>`;
     if(V.has('tleads'))  td+=`<td class="td-num ${cls}">${T>0?fmtL(T):''}</td>`;
+    if(V.has('trigpct')) td+=`<td class="td-num ${cls}">${L>0&&T>0?(T/L*100).toFixed(1)+'%':''}</td>`;
     if(V.has('pvl'))     td+=`<td class="td-num ${cls}">${fmtN(PVL)}</td>`;
     if(V.has('soldcpl')&&!isComb) td+=`<td class="td-num ${cls}">${fmtSC(SC)}</td>`;
     if(V.has('valpct')&&!isComb)  td+=`<td class="td-num ${cls}">${VP>0?VP.toFixed(1)+'%':''}</td>`;
