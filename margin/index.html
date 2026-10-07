@@ -857,6 +857,8 @@ async function loadData(){
     {
       const gcAgg={};
       for(const r of parsedEnt){
+        const mo=(r['Month']||'').trim();
+        if(mo && mo!=="Oct'26") continue;
         const rawCT=(r['Campaign Type']||'').trim();
         const bu=(r['BU Type']||'').trim();
         const src=rawCT||bu;
