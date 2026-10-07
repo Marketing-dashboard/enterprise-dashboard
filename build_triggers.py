@@ -17,6 +17,57 @@ TRIG_GID_NEW  = '0'
 EXCEL_PATH = r'C:\Users\Deepanshi Ahuja\Desktop\Enterprise-dashboard-sold_cpl.xlsx'
 DASH_PATH  = os.path.join(os.path.dirname(__file__), 'margin', 'index.html')
 
+# Oct'26 daily demand (run rates) — update each month
+DEMAND_OCT = {
+    'Toyota Camry': 41,
+    'Toyota Hilux': 15,
+    'Toyota Urban Cruiser EBELLA': 11,
+    'Toyota Glanza': 197,
+    'Toyota Hyryder': 1159,
+    'Toyota Vellfire': 9,
+    'Toyota Land Cruiser 300': 7,
+    'Mahindra Jeeto': 163,
+    'Mahindra Treo,Mahindra Treo Plus': 471,
+    'Mahindra Treo Xtra': 126,
+    'Mahindra UDO': 205,
+    'Mahindra Zeo': 76,
+    'Mahindra Zor Grand': 15,
+    'Lexus ES 350h': 8,
+    'Land Rover Range Rover Evoque': 100,
+    'Land Rover Range Rover Velar': 200,
+    'Land Rover Defender': 130,
+    'Land Rover Range Rover': 40,
+    'Land Rover Range Rover Sport': 90,
+    'Audi Q3': 18,
+    'Audi Q7': 18,
+    'Citroen Aircross': 80,
+    'Citroen C3': 40,
+    'Citroen Basalt': 38,
+    'Volvo XC90': 7,
+    'Mercedes-Benz GLC': 4,
+    'Honda Elevate': 500,
+    'Honda City': 130,
+    'Honda Amaze': 280,
+    'Nexon': 464,
+    'Punch': 615,
+    'Harrier': 65,
+    'Safari': 62,
+    'Curvv': 159,
+    'Sierra': 398,
+    'CurvvEV': 267,
+    'HarrierEV': 272,
+    'Sierra EV': 431,
+    'Tata Altroz': 272,
+    'Volkswagen Taigun': 127,
+    'Mahindra XEV 9e': 507,
+    'Mahindra XEV 9S': 165,
+    'Toyota Taisor': 201,
+    'Royal Enfield': 2200,
+    'Hmsi Bigwing': 347,
+    'Hmsi redwing': 160,
+    'Ola': 467,
+}
+
 # BU Types to include from new spends sheet
 VALID_BU_TYPES = {'media sales-ga', 'media sales-fb', 'media sales-whatsapp'}  # excludes media sales-ga_ims
 
@@ -205,6 +256,20 @@ else:
     insert = content.find('\nloadRates().then(loadData)')
     content = content[:insert] + '\n' + embed_trig + content[insert:]
     print(f'  _localTrigData inserted ({len(TRIG_JSON)//1024}KB, {len(trig_agg)} keys)')
+
+# Replace _localDemandData
+DEMAND_JSON = json.dumps(DEMAND_OCT, ensure_ascii=False)
+embed_demand = f'const _localDemandData={DEMAND_JSON};'
+existing_d = content.find('const _localDemandData=')
+if existing_d >= 0:
+    end_d = content.find(';', existing_d) + 1
+    if content[end_d:end_d+1] == '\n': end_d += 1
+    content = content[:existing_d] + embed_demand + '\n' + content[end_d:]
+    print(f'  _localDemandData replaced ({len(DEMAND_OCT)} models)')
+else:
+    insert = content.find('\nloadRates().then(loadData)')
+    content = content[:insert] + '\n' + embed_demand + content[insert:]
+    print(f'  _localDemandData inserted ({len(DEMAND_OCT)} models)')
 
 # Replace loadRates — always a single line, so replace line-by-line
 new_fn = 'async function loadRates(){_rates={byMonth:' + json.dumps(rates_by_month, ensure_ascii=False) + '}}'
