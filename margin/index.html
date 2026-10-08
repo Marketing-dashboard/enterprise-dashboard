@@ -771,7 +771,7 @@ async function loadData(){
     }
     // Pass 2: build entMap — skip blank-CT rows only if their buGroup is already covered by CT rows
     // Normalize model name variants so spend+triggers merge into one row
-    const _ENT_MODEL_NORM={'mahindra pv':{'mahindra scorpion':'Mahindra Scorpio N'}};
+    const _ENT_MODEL_NORM={'mahindra pv':{'mahindra scorpion':'Mahindra Scorpio N'},'harley':{'harley-davidson x440 t':'Harley Davidson X440 T'}};
     // Brand canonical-casing map: prefer mixed-case over ALL-CAPS for same brand
     const _brandCanon={};
     for(const r of parsedEnt){

@@ -192,6 +192,7 @@ print('Building rates from Excel...')
 MODEL_ALIASES = {
     'honda cb125 hornet': 'honda cb125',
     'ola': 'ola electric',                      # Excel uses 'Ola'; GSheet uses 'Ola Electric'
+    'harley-davidson x440 t': 'harley davidson x440 t',  # hyphen vs space variant
     'mercedes-benz c-class': 'mercedes benz c class',
     'mercedes-benz gla': 'mercedes benz gla',
     'mercedes-benz glc': 'mercedes benz glc',
