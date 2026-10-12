@@ -89,19 +89,22 @@ def src_to_channel(src):
 
 # ── 1. Fetch new spends sheet to get valid brand/model set ──
 print('Fetching spends sheet (Enterprise_Raw)...')
-ent_rows_raw = gsheet_csv(ENT_SHEET_ID, ENT_GID_NEW)
-# Filter: skip blank/N/A brands, only target BU Types
-ent_rows = [r for r in ent_rows_raw
-            if (r.get('Brand') or '').strip() not in ('', '#N/A', 'N/A')
-            and (r.get('BU Type') or '').strip().lower() in VALID_BU_TYPES
-            and (r.get('Month') or '').strip() == "Oct'26"]
-spend_brands = set()
-for r in ent_rows:
-    b = (r.get('Brand') or '').strip().lower()
-    m = (r.get('Model') or '').strip().lower()
-    if b and m:
-        spend_brands.add((b, m))
-print(f'  After filter: {len(ent_rows):,} rows, {len(spend_brands)} brand/models')
+try:
+    ent_rows_raw = gsheet_csv(ENT_SHEET_ID, ENT_GID_NEW)
+    ent_rows = [r for r in ent_rows_raw
+                if (r.get('Brand') or '').strip() not in ('', '#N/A', 'N/A')
+                and (r.get('BU Type') or '').strip().lower() in VALID_BU_TYPES
+                and (r.get('Month') or '').strip() == "Oct'26"]
+    spend_brands = set()
+    for r in ent_rows:
+        b = (r.get('Brand') or '').strip().lower()
+        m = (r.get('Model') or '').strip().lower()
+        if b and m:
+            spend_brands.add((b, m))
+    print(f'  After filter: {len(ent_rows):,} rows, {len(spend_brands)} brand/models')
+except Exception as e:
+    print(f'  WARNING: Could not fetch spends sheet ({e}), continuing without it...')
+    ent_rows, spend_brands = [], set()
 
 # ── 2. Fetch new triggers sheet ──
 print('Fetching Triggers sheet...')
