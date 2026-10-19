@@ -177,6 +177,9 @@ for r in trig_rows:
             'mahindra bolero': 'mahindra bolero',
             'mahindra scorpion': 'mahindra scorpio n',
         },
+        'simple energy': {
+            'simple energy': 'simple one',  # trigger sheet uses brand name as model
+        },
     }
     brand_l = brand_mapped.lower()
     model_l = model_mapped.lower()
