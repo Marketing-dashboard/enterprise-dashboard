@@ -165,6 +165,9 @@ for r in trig_rows:
             date_str = datetime.strptime(date_raw, '%d-%b-%Y').strftime('%Y-%m-%d')
     except:
         date_str = date_raw
+    # Only include current month's triggers (Nov'26 = 2026-11-xx)
+    if not date_str.startswith('2026-11'):
+        continue
 
     # Normalize model names in trigger keys to match Enterprise_Raw model names
     TRIG_MODEL_NORM = {
