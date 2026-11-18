@@ -24,16 +24,15 @@ DEMAND_OCT = {
     'Toyota Land Cruiser 300': 10,
     'Toyota Hilux': 23,
     'Toyota Urban Cruiser EBELLA': 19,
+    'Toyota Hyryder': 302,
+    'Toyota Taisor': 156,
+    'Toyota Rumion': 3,
     'Volkswagen Virtus': 82,
     'Volkswagen Taigun': 152,
     'Volkswagen Tayron': 10,
     'Honda Elevate': 500,
     'Honda City': 130,
     'Honda Amaze': 280,
-    'Honda Activa 125': 100,
-    'Honda CB350RS': 95,
-    'Honda Hness CB350': 75,
-    'Honda CB350': 73,
     'Citroen Aircross': 80,
     'Citroen C3': 40,
     'Citroen Basalt': 38,
@@ -54,11 +53,23 @@ DEMAND_OCT = {
     'Tata Curvv EV': 70,
     'Tata Harrier EV': 195,
     'Tata Sierra EV': 226,
+    'Lexus NX': 90,
+    'Lexus ES 350h': 12,
+    'Lexus RX': 15,
     'Skoda Slavia': 322,
     'Skoda Kushaq': 516,
     'Skoda Kylaq': 405,
     'Skoda Kodiaq': 26,
-    'Royal Enfield': 1000,
+    'Skoda Octavia RS': 13,
+    'Mahindra XEV 9e': 64,
+    'Mahindra BE 6 SPORTEQ': 124,
+    'Mahindra Bolero Max Pik-Up City': 498,
+    'Mahindra Bolero Pik-Up': 316,
+    'Mahindra Veero': 82,
+    'Audi Q7': 2,
+    'Royal Enfield': 1200,
+    'HMSI Bigwing': 210,
+    'HMSI Redwing': 200,
 }
 
 # BU Types to include from new spends sheet
@@ -175,6 +186,9 @@ for r in trig_rows:
         },
         'simple energy': {
             'simple energy': 'simple one',  # trigger sheet uses brand name as model
+        },
+        'toyota': {
+            'toyota ebella': 'toyota urban cruiser ebella',
         },
     }
     brand_l = brand_mapped.lower()
