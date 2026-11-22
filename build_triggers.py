@@ -203,6 +203,10 @@ for r in trig_rows:
         'toyota': {
             'toyota ebella': 'toyota urban cruiser ebella',
         },
+        'vinfast': {
+            'vinfast vf6': 'vf6',
+            'vinfast vf7': 'vf7',
+        },
     }
     model_l = model_mapped.lower()
     if brand_l in TRIG_MODEL_NORM:
