@@ -176,6 +176,16 @@ for r in trig_rows:
     if not date_str.startswith('2026-11'):
         continue
 
+    # Remap trigger brand to match spends sheet brand (for mismatched brand names)
+    TRIG_BRAND_NORM = {
+        # Trigger sheet uses 'Honda' for Shine models; spends sheet uses 'HMSI Redwing'
+        ('honda', 'honda shine'):     'hmsi redwing',
+        ('honda', 'honda shine 100'): 'hmsi redwing',
+    }
+    brand_l = brand_mapped.lower()
+    model_l_tmp = model_mapped.lower()
+    brand_l = TRIG_BRAND_NORM.get((brand_l, model_l_tmp), brand_l)
+
     # Normalize model names in trigger keys to match Enterprise_Raw model names
     TRIG_MODEL_NORM = {
         'mahindra pv': {
@@ -194,7 +204,6 @@ for r in trig_rows:
             'toyota ebella': 'toyota urban cruiser ebella',
         },
     }
-    brand_l = brand_mapped.lower()
     model_l = model_mapped.lower()
     if brand_l in TRIG_MODEL_NORM:
         model_l = TRIG_MODEL_NORM[brand_l].get(model_l, model_l)
