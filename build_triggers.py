@@ -117,11 +117,31 @@ except Exception as e:
 print('Fetching Triggers sheet...')
 trig_rows = gsheet_csv(TRIG_SHEET_ID, TRIG_GID_NEW)
 
-# ── 3. Aggregate triggers ──
+# ── 3. Aggregate triggers + Unique Gen ──
 print('Aggregating triggers...')
 trig_agg = {}
+ug_agg   = {}   # Unique Gen aggregated by same key
 skipped_channel = set()
 total = 0
+
+TRIG_BRAND_NORM = {
+    ('honda', 'honda shine'):     'hmsi redwing',
+    ('honda', 'honda shine 100'): 'hmsi redwing',
+}
+TRIG_MODEL_NORM_STATIC = {
+    'mahindra pv': {
+        'xev 9s':            'mahindra xev 9s',
+        'xev 9e':            'mahindra xev 9e',
+        'xuv 7xo':           'mahindra xuv 7xo',
+        'xuv 3xo':           'mahindra xuv 3xo',
+        'bolero neo':        'mahindra bolero neo',
+        'mahindra bolero':   'mahindra bolero',
+        'mahindra scorpion': 'mahindra scorpio n',
+    },
+    'simple energy': {'simple energy': 'simple one'},
+    'toyota':        {'toyota ebella': 'toyota urban cruiser ebella'},
+    'vinfast':       {'vinfast vf6': 'vf6', 'vinfast vf7': 'vf7'},
+}
 
 for r in trig_rows:
     brand_mapped = (r.get('Brand_Mapped') or '').strip()
@@ -129,30 +149,7 @@ for r in trig_rows:
     if not brand_mapped or not model_mapped:
         continue
 
-    fb_low = brand_mapped.lower()
-    is_jlr     = 'jlr' in fb_low or 'land rover' in fb_low or 'jaguar' in fb_low
-    is_lexus   = 'lexus' in fb_low
-    is_citroen = 'citroen' in fb_low
-    is_river   = 'river' in fb_low
-    use_list_id = is_jlr or is_lexus or is_citroen or is_river
-
-    triggered    = float(r.get('Triggered') or 0 or 0)
-    list_id_trig = float(r.get('Triggered in List_ID') or 0 or 0)
-
-    # Filter: others need Triggered>0; special brands also accept List_ID>0
-    if not triggered and not (use_list_id and list_id_trig):
-        continue
-
-    # Effective trigger count
-    if use_list_id:
-        effective = triggered + list_id_trig
-    else:
-        effective = triggered
-
-    if not effective:
-        continue
-
-    # Channel
+    # Channel (validate early so we can build the key)
     src = (r.get('final_source') or r.get('Campaign Type') or '').strip()
     channel = src_to_channel(src)
     if channel is None:
@@ -163,7 +160,6 @@ for r in trig_rows:
     date_raw = (r.get('Date') or '').strip()
     if not date_raw:
         continue
-    # Normalize date to YYYY-MM-DD
     try:
         from datetime import datetime
         if '-' in date_raw and len(date_raw) == 10:
@@ -172,50 +168,43 @@ for r in trig_rows:
             date_str = datetime.strptime(date_raw, '%d-%b-%Y').strftime('%Y-%m-%d')
     except:
         date_str = date_raw
-    # Only include current month's triggers (Nov'26 = 2026-11-xx)
     if not date_str.startswith('2026-11'):
         continue
 
-    # Remap trigger brand to match spends sheet brand (for mismatched brand names)
-    TRIG_BRAND_NORM = {
-        # Trigger sheet uses 'Honda' for Shine models; spends sheet uses 'HMSI Redwing'
-        ('honda', 'honda shine'):     'hmsi redwing',
-        ('honda', 'honda shine 100'): 'hmsi redwing',
-    }
-    brand_l = brand_mapped.lower()
+    # Brand/model normalization
+    brand_l   = brand_mapped.lower()
     model_l_tmp = model_mapped.lower()
     brand_l = TRIG_BRAND_NORM.get((brand_l, model_l_tmp), brand_l)
 
-    # Normalize model names in trigger keys to match Enterprise_Raw model names
-    TRIG_MODEL_NORM = {
-        'mahindra pv': {
-            'xev 9s':          'mahindra xev 9s',
-            'xev 9e':          'mahindra xev 9e',
-            'xuv 7xo':         'mahindra xuv 7xo',
-            'xuv 3xo':         'mahindra xuv 3xo',
-            'bolero neo':      'mahindra bolero neo',
-            'mahindra bolero': 'mahindra bolero',
-            'mahindra scorpion': 'mahindra scorpio n',
-        },
-        'simple energy': {
-            'simple energy': 'simple one',  # trigger sheet uses brand name as model
-        },
-        'toyota': {
-            'toyota ebella': 'toyota urban cruiser ebella',
-        },
-        'vinfast': {
-            'vinfast vf6': 'vf6',
-            'vinfast vf7': 'vf7',
-        },
-    }
+    fb_low = brand_mapped.lower()
+    is_jlr     = 'jlr' in fb_low or 'land rover' in fb_low or 'jaguar' in fb_low
+    is_lexus   = 'lexus' in fb_low
+    is_citroen = 'citroen' in fb_low
+    is_river   = 'river' in fb_low
+    use_list_id = is_jlr or is_lexus or is_citroen or is_river
+    # Normalize model names
     model_l = model_mapped.lower()
-    if brand_l in TRIG_MODEL_NORM:
-        model_l = TRIG_MODEL_NORM[brand_l].get(model_l, model_l)
+    if brand_l in TRIG_MODEL_NORM_STATIC:
+        model_l = TRIG_MODEL_NORM_STATIC[brand_l].get(model_l, model_l)
     key = f"{date_str}|{brand_l}|{model_l}|{channel.lower()}"
+
+    # Always aggregate Unique Gen (regardless of triggered count)
+    unique_gen = float(r.get('Unique Gen') or 0 or 0)
+    if unique_gen > 0:
+        ug_agg[key] = ug_agg.get(key, 0) + unique_gen
+
+    # Trigger aggregation (only when triggered)
+    triggered    = float(r.get('Triggered') or 0 or 0)
+    list_id_trig = float(r.get('Triggered in List_ID') or 0 or 0)
+    if not triggered and not (use_list_id and list_id_trig):
+        continue
+    effective = (triggered + list_id_trig) if use_list_id else triggered
+    if not effective:
+        continue
     trig_agg[key] = trig_agg.get(key, 0) + effective
     total += effective
 
-print(f'  Aggregated: {len(trig_agg):,} keys, {total:,.0f} total triggers')
+print(f'  Aggregated: {len(trig_agg):,} trig keys, {total:,.0f} total triggers, {len(ug_agg):,} unique gen keys')
 print(f'  Skipped channels: {skipped_channel}')
 
 # ── 4. Build month-wise rates from Excel ──
@@ -289,6 +278,20 @@ else:
     insert = content.find('\nloadRates().then(loadData)')
     content = content[:insert] + '\n' + embed_trig + content[insert:]
     print(f'  _localTrigData inserted ({len(TRIG_JSON)//1024}KB, {len(trig_agg)} keys)')
+
+# Replace _localUniqueGenData
+UG_JSON = json.dumps(ug_agg, ensure_ascii=False)
+embed_ug = f'const _localUniqueGenData={UG_JSON};'
+existing_ug = content.find('const _localUniqueGenData=')
+if existing_ug >= 0:
+    end_ug = content.find(';', existing_ug) + 1
+    if content[end_ug:end_ug+1] == '\n': end_ug += 1
+    content = content[:existing_ug] + embed_ug + '\n' + content[end_ug:]
+    print(f'  _localUniqueGenData replaced ({len(UG_JSON)//1024}KB, {len(ug_agg)} keys)')
+else:
+    insert = content.find('\nloadRates().then(loadData)')
+    content = content[:insert] + '\n' + embed_ug + content[insert:]
+    print(f'  _localUniqueGenData inserted ({len(UG_JSON)//1024}KB, {len(ug_agg)} keys)')
 
 # Replace _localDemandData
 DEMAND_JSON = json.dumps(DEMAND_OCT, ensure_ascii=False)
