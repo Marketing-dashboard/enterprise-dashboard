@@ -293,6 +293,44 @@ else:
     content = content[:insert] + '\n' + embed_ug + content[insert:]
     print(f'  _localUniqueGenData inserted ({len(UG_JSON)//1024}KB, {len(ug_agg)} keys)')
 
+# Replace _localHistData (from Historic_data_enterprise.xlsx)
+HIST_XLSX = r'C:\Users\Deepanshi Ahuja\Desktop\Historic_data_enterprise.xlsx'
+if os.path.exists(HIST_XLSX):
+    import pandas as _pd
+    _hdf = _pd.read_excel(HIST_XLSX).fillna(0)
+    _hdf['Brand'] = _hdf['Brand'].str.strip().replace({'citroen': 'Citroen', 'TATA EV': 'Tata EV'})
+    _hdf['Model'] = _hdf['Model'].str.strip()
+    hist_agg = {}
+    for _, _r in _hdf.iterrows():
+        _key = f"{_r['Month']}|{_r['Brand']}|{_r['Model']}|{_r['Channel']}"
+        _pvl = float(_r['Leads']) * float(_r['Sold CPL'])
+        _rev = _pvl * float(_r['Validation%'])
+        if _key not in hist_agg:
+            hist_agg[_key] = {'seg': _r['Segment'], 's': 0, 'l': 0, 'ug': 0, 't': 0, 'pvl': 0, 'rev': 0, 'sc': float(_r['Sold CPL']), 'vp': float(_r['Validation%'])}
+        _h = hist_agg[_key]
+        _h['s'] += float(_r['Spends']); _h['l'] += float(_r['Leads'])
+        _h['ug'] += float(_r['Unique Gen']); _h['t'] += float(_r['Triggered MS'])
+        _h['pvl'] += _pvl; _h['rev'] += _rev
+        _h['sc'] = float(_r['Sold CPL']); _h['vp'] = float(_r['Validation%'])
+    for _v in hist_agg.values():
+        _v['s'] = round(_v['s']); _v['l'] = round(_v['l'], 2); _v['ug'] = round(_v['ug'], 2)
+        _v['t'] = round(_v['t'], 2); _v['pvl'] = round(_v['pvl'], 2); _v['rev'] = round(_v['rev'], 2)
+        _v['sc'] = round(_v['sc'], 2); _v['vp'] = round(_v['vp'], 4)
+    HIST_JSON = json.dumps(hist_agg, ensure_ascii=False)
+    embed_hist = f'const _localHistData={HIST_JSON};'
+    existing_hist = content.find('const _localHistData=')
+    if existing_hist >= 0:
+        end_hist = content.find(';', existing_hist) + 1
+        if content[end_hist:end_hist+1] == '\n': end_hist += 1
+        content = content[:existing_hist] + embed_hist + '\n' + content[end_hist:]
+        print(f'  _localHistData replaced ({len(HIST_JSON)//1024}KB, {len(hist_agg)} keys)')
+    else:
+        insert = content.find('\nloadRates().then(loadData)')
+        content = content[:insert] + '\n' + embed_hist + content[insert:]
+        print(f'  _localHistData inserted ({len(HIST_JSON)//1024}KB, {len(hist_agg)} keys)')
+else:
+    print('  _localHistData skipped (Excel not found)')
+
 # Replace _localDemandData
 DEMAND_JSON = json.dumps(DEMAND_OCT, ensure_ascii=False)
 embed_demand = f'const _localDemandData={DEMAND_JSON};'
