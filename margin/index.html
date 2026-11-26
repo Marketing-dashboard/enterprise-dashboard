@@ -514,7 +514,7 @@ table tfoot tr td.hist-cell{font-weight:700}
           <option value="Media sales-Whatsapp">WhatsApp</option>
         </select>
       </div>
-      <button class="reset-btn" onclick="document.getElementById('h-segment').value='';document.getElementById('h-brand').value='';document.getElementById('h-channel').value='';_histSelMonths=new Set(HIST_ALL_MONTHS);renderHistMonthSelector();renderHist()">Reset</button>
+      <button class="reset-btn" onclick="document.getElementById('h-segment').value='';document.getElementById('h-brand').value='';document.getElementById('h-channel').value='';_histSelMonths=new Set(["Oct'26","Nov'26"]);renderHistMonthSelector();renderHist()">Reset</button>
     </div>
     <div class="col-selector" id="histMonthSelector" style="border-bottom:1px solid var(--border)"></div>
     <div class="table-wrap">
@@ -1689,7 +1689,7 @@ const HIST_KPI_DEFS=[
   {key:'margin',  label:'Margin'},
 ];
 let _histVisKPIs=new Set(['spends','leads','tleads','cpl','tcpl','margin']);
-let _histSelMonths=new Set(HIST_ALL_MONTHS);
+let _histSelMonths=new Set(["Oct'26","Nov'26"]);
 
 function renderHistMonthSelector(){
   const bar=document.getElementById('histMonthSelector');
@@ -1705,14 +1705,9 @@ function renderHistMonthSelector(){
 }
 
 function toggleHistMonth(mo,on){
-  if(on){
-    if(_histSelMonths.size>=4){renderHistMonthSelector();return;}
-    _histSelMonths.add(mo);
-  } else {
-    if(_histSelMonths.size<=1){renderHistMonthSelector();return;}
-    _histSelMonths.delete(mo);
-  }
-  HIST_MONTHS=[...HIST_ALL_MONTHS].filter(m=>_histSelMonths.has(m));
+  if(on && _histSelMonths.size>=4){ renderHistMonthSelector(); return; }
+  if(!on && _histSelMonths.size<=1){ renderHistMonthSelector(); return; }
+  on ? _histSelMonths.add(mo) : _histSelMonths.delete(mo);
   renderHistMonthSelector();
   renderHist();
 }
