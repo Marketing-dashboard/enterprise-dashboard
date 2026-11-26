@@ -340,6 +340,7 @@ td.mrg-neg{color:#dc2626}
 .col-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:11px;font-weight:500;color:var(--text2);transition:all .12s;user-select:none}
 .col-chip input{width:13px;height:13px;cursor:pointer;accent-color:#0891b2}
 .col-chip.active{border-color:#0891b2;background:#ecfeff;color:#0891b2}
+.col-chip.disabled-chip{opacity:.4;cursor:not-allowed}
 /* ── HIST TAB ── */
 .hist-m-even{background:#eff6ff!important}
 .hist-m-odd{background:#fff!important}
@@ -513,8 +514,9 @@ table tfoot tr td.hist-cell{font-weight:700}
           <option value="Media sales-Whatsapp">WhatsApp</option>
         </select>
       </div>
-      <button class="reset-btn" onclick="document.getElementById('h-segment').value='';document.getElementById('h-brand').value='';document.getElementById('h-channel').value='';renderHist()">Reset</button>
+      <button class="reset-btn" onclick="document.getElementById('h-segment').value='';document.getElementById('h-brand').value='';document.getElementById('h-channel').value='';_histSelMonths=new Set(HIST_ALL_MONTHS);renderHistMonthSelector();renderHist()">Reset</button>
     </div>
+    <div class="col-selector" id="histMonthSelector" style="border-bottom:1px solid var(--border)"></div>
     <div class="table-wrap">
       <div class="table-card">
         <div class="table-header-bar">
@@ -1046,7 +1048,7 @@ function switchTab(tab){
   document.getElementById('tab-hist').classList.toggle('active',tab==='hist');
   if(tab==='campaign') renderCampaign();
   if(tab==='google') renderGoogleCamp();
-  if(tab==='hist'){populateHistFilters();renderHistColSelector();renderHist();}
+  if(tab==='hist'){populateHistFilters();renderHistMonthSelector();renderHistColSelector();renderHist();}
 }
 
 function populateFilters(){
@@ -1677,7 +1679,8 @@ function renderGoogleCamp(){
 }
 
 // ── HIST TAB ──────────────────────────────────────────────────────────────
-const HIST_MONTHS=["Apr'26","May'26","Jun'26","Jul'26","Aug'26","Sep'26","Oct'26"];
+const HIST_ALL_MONTHS=["Apr'26","May'26","Jun'26","Jul'26","Aug'26","Sep'26","Oct'26","Nov'26"];
+let HIST_MONTHS=[...HIST_ALL_MONTHS]; // updated by selection
 const HIST_KPI_DEFS=[
   {key:'spends',  label:'Spends'},
   {key:'leads',   label:'Leads'},
@@ -1693,6 +1696,69 @@ const HIST_KPI_DEFS=[
   {key:'margin',  label:'Margin'},
 ];
 let _histVisKPIs=new Set(['spends','leads','tleads','cpl','tcpl','margin']);
+let _histSelMonths=new Set(HIST_ALL_MONTHS);
+
+function renderHistMonthSelector(){
+  const bar=document.getElementById('histMonthSelector');
+  if(!bar) return;
+  const selCount=_histSelMonths.size;
+  let h=`<span class="col-selector-label">Months (max 4):</span>`;
+  for(const mo of HIST_ALL_MONTHS){
+    const on=_histSelMonths.has(mo);
+    const disabled=(!on && selCount>=4)?'disabled':'';
+    h+=`<label class="col-chip${on?' active':''}${disabled?' disabled-chip':''}"><input type="checkbox" ${on?'checked':''} ${disabled} onchange="toggleHistMonth('${mo}',this.checked)">${mo}</label>`;
+  }
+  bar.innerHTML=h;
+}
+
+function toggleHistMonth(mo,on){
+  if(on){
+    if(_histSelMonths.size>=4){renderHistMonthSelector();return;}
+    _histSelMonths.add(mo);
+  } else {
+    if(_histSelMonths.size<=1){renderHistMonthSelector();return;}
+    _histSelMonths.delete(mo);
+  }
+  HIST_MONTHS=[...HIST_ALL_MONTHS].filter(m=>_histSelMonths.has(m));
+  renderHistMonthSelector();
+  renderHist();
+}
+
+function buildNov26Data(){
+  if(!_rows||!_rows.length) return {};
+  const nov={};
+  const moKey="Nov'26";
+  const byMonth=(_rates&&_rates.byMonth)||{};
+  const moRates=byMonth[moKey]||{soldCPL:{},validation:{}};
+  const vld=moRates.validation||{};
+  const sc=moRates.soldCPL||{};
+  for(const r of _rows){
+    if(r.month!==moKey) continue;
+    const br=r.brand, mo=r.model;
+    const bm=`${br.toLowerCase()}||${mo.toLowerCase().replace(/-/g,' ')}`;
+    const awSC=sc[`${bm}||Adwords`]||0, awVP=(vld[`${bm}||Adwords`]??0)/100;
+    const fbSC=sc[`${bm}||MS-FB`]||0,   fbVP=(vld[`${bm}||MS-FB`]??0)/100;
+    const ctSC=sc[`${bm}||CTWA`]||0,    ctVP=(vld[`${bm}||CTWA`]??0)/100;
+    const seg=r.segment||'';
+    const addEntry=(k,s,l,t,ug,pvl,rev,soldcpl,valp)=>{
+      if(!nov[k]) nov[k]={seg,s:0,l:0,ug:0,t:0,pvl:0,rev:0,sc:soldcpl,vp:valp};
+      const e=nov[k]; e.s+=s; e.l+=l; e.t+=t; e.ug+=ug; e.pvl+=pvl; e.rev+=rev;
+    };
+    if(r.awSpend||r.awLeads||r.awTrig){
+      const pvl=r.awTrig*awVP, rv=pvl*awSC;
+      addEntry(`${moKey}|${br}|${mo}|Media Sales-GA`,r.awSpend,r.awLeads,r.awTrig,r.awUG||0,pvl,rv,awSC,awVP);
+    }
+    if(r.fbSpend||r.fbLeads||r.fbTrig){
+      const pvl=r.fbTrig*fbVP, rv=pvl*fbSC;
+      addEntry(`${moKey}|${br}|${mo}|Media Sales-FB`,r.fbSpend,r.fbLeads,r.fbTrig,r.fbUG||0,pvl,rv,fbSC,fbVP);
+    }
+    if(r.ctwaSpend||r.ctwaLeads||r.ctwaTrig){
+      const pvl=r.ctwaTrig*ctVP, rv=pvl*ctSC;
+      addEntry(`${moKey}|${br}|${mo}|Media sales-Whatsapp`,r.ctwaSpend,r.ctwaLeads,r.ctwaTrig,r.ctwaUG||0,pvl,rv,ctSC,ctVP);
+    }
+  }
+  return nov;
+}
 
 function populateHistFilters(){
   if(typeof _localHistData==='undefined') return;
@@ -1735,11 +1801,16 @@ function renderHist(){
     return;
   }
 
+  // Merge static hist data with live Nov'26 from _rows
+  const nov26=buildNov26Data();
+  const allData=Object.assign({},_localHistData,nov26);
+
   // Aggregate by brand|model per month (combine channels unless filtered)
   const agg={};
-  for(const [k,v] of Object.entries(_localHistData)){
+  for(const [k,v] of Object.entries(allData)){
     const parts=k.split('|');
     const [month,br,mo,channel]=parts;
+    if(!_histSelMonths.has(month)) continue;
     if(seg && v.seg!==seg) continue;
     if(brand && br!==brand) continue;
     if(ch && channel!==ch) continue;
@@ -1748,7 +1819,6 @@ function renderHist(){
     if(!agg[bmk].months[month]) agg[bmk].months[month]={s:0,l:0,ug:0,t:0,pvl:0,rev:0,sc:0,vp:0};
     const m=agg[bmk].months[month];
     m.s+=v.s; m.l+=v.l; m.ug+=v.ug; m.t+=v.t; m.pvl+=v.pvl; m.rev+=v.rev;
-    // last-write sc/vp (single channel filtered: exact; combined: last brand value)
     m.sc=v.sc; m.vp=v.vp;
   }
 
