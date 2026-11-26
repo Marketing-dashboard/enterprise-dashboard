@@ -303,8 +303,8 @@ if os.path.exists(HIST_XLSX):
     hist_agg = {}
     for _, _r in _hdf.iterrows():
         _key = f"{_r['Month']}|{_r['Brand']}|{_r['Model']}|{_r['Channel']}"
-        _pvl = float(_r['Triggered MS']) * float(_r['Sold CPL'])
-        _rev = _pvl * float(_r['Validation%'])
+        _pvl = float(_r['Triggered MS']) * float(_r['Validation%'])
+        _rev = _pvl * float(_r['Sold CPL'])
         if _key not in hist_agg:
             hist_agg[_key] = {'seg': _r['Segment'], 's': 0, 'l': 0, 'ug': 0, 't': 0, 'pvl': 0, 'rev': 0, 'sc': float(_r['Sold CPL']), 'vp': float(_r['Validation%'])}
         _h = hist_agg[_key]
