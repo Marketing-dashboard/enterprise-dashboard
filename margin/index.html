@@ -1794,8 +1794,13 @@ function renderHist(){
     return;
   }
 
-  // Always sync HIST_MONTHS from selection before rendering
-  HIST_MONTHS=[...HIST_ALL_MONTHS].filter(m=>_histSelMonths.has(m));
+  // Local snapshot of selected months — never reads the stale module-level var
+  const activeMos=[...HIST_ALL_MONTHS].filter(m=>_histSelMonths.has(m));
+  if(!activeMos.length){
+    document.getElementById('histTableContainer').innerHTML='<div class="empty">Select at least one month.</div>';
+    return;
+  }
+  const activeMoSet=new Set(activeMos);
 
   // Merge static hist data with live Nov'26 from _rows
   const nov26=buildNov26Data();
@@ -1806,7 +1811,7 @@ function renderHist(){
   for(const [k,v] of Object.entries(allData)){
     const parts=k.split('|');
     const [month,br,mo,channel]=parts;
-    if(!_histSelMonths.has(month)) continue;
+    if(!activeMoSet.has(month)) continue;
     if(seg && v.seg!==seg) continue;
     if(brand && br!==brand) continue;
     if(ch && channel!==ch) continue;
@@ -1858,12 +1863,12 @@ function renderHist(){
   let h='<table><thead>';
   h+='<tr>';
   h+='<th class="s0 left" rowspan="2">Brand</th><th class="s1 left" rowspan="2">Model</th>';
-  HIST_MONTHS.forEach((mo,mi)=>{
+  activeMos.forEach((mo,mi)=>{
     const cls=mi%2===0?'hist-m-even-hd':'hist-m-odd-hd';
     h+=`<th class="${cls} hist-mo-span" colspan="${kc}">${mo}</th>`;
   });
   h+='</tr><tr>';
-  HIST_MONTHS.forEach((mo,mi)=>{
+  activeMos.forEach((mo,mi)=>{
     const cls=mi%2===0?'hist-m-even-hd':'hist-m-odd-hd';
     visKPIs.forEach(k=>{
       h+=`<th class="${cls}" style="font-size:10px;padding:4px 6px">${k.label}</th>`;
@@ -1874,7 +1879,7 @@ function renderHist(){
   // Data rows
   for(const r of rows){
     h+=`<tr><td class="s0">${escH(r.brand)}</td><td class="s1">${escH(r.model)}</td>`;
-    HIST_MONTHS.forEach((mo,mi)=>{
+    activeMos.forEach((mo,mi)=>{
       const d=r.months[mo]||null;
       const cls=mi%2===0?'hist-m-even':'hist-m-odd';
       visKPIs.forEach(k=>{ h+=hCell(d,k.key,cls); });
@@ -1885,7 +1890,8 @@ function renderHist(){
   // Totals row
   const tot={};
   for(const r of rows){
-    for(const [mo,d] of Object.entries(r.months)){
+    for(const mo of activeMos){
+      const d=r.months[mo]; if(!d) continue;
       if(!tot[mo]) tot[mo]={s:0,l:0,ug:0,t:0,pvl:0,rev:0,sc:0,vp:0};
       tot[mo].s+=d.s; tot[mo].l+=d.l; tot[mo].ug+=d.ug;
       tot[mo].t+=d.t; tot[mo].pvl+=d.pvl; tot[mo].rev+=d.rev;
@@ -1893,7 +1899,7 @@ function renderHist(){
   }
   h+='</tbody><tfoot><tr>';
   h+='<td class="s0 left" style="font-weight:700" colspan="2">TOTAL</td>';
-  HIST_MONTHS.forEach((mo,mi)=>{
+  activeMos.forEach((mo,mi)=>{
     const d=tot[mo]||null;
     const cls=mi%2===0?'hist-m-even':'hist-m-odd';
     visKPIs.forEach(k=>{ h+=hCell(d,k.key,cls); });
