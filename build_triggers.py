@@ -121,6 +121,7 @@ trig_rows = gsheet_csv(TRIG_SHEET_ID, TRIG_GID_NEW)
 print('Aggregating triggers...')
 trig_agg = {}
 ug_agg   = {}   # Unique Gen aggregated by same key
+ct_trig_agg = {}  # utm_campaign → trigger count
 skipped_channel = set()
 total = 0
 
@@ -203,6 +204,12 @@ for r in trig_rows:
         continue
     trig_agg[key] = trig_agg.get(key, 0) + effective
     total += effective
+
+    # Campaign-name level aggregation (for Google Campaigns tab exact matching)
+    utm = (r.get('utm_campaign') or '').strip()
+    if utm:
+        ct_key = f'{utm}'
+        ct_trig_agg[ct_key] = ct_trig_agg.get(ct_key, 0) + effective
 
 print(f'  Aggregated: {len(trig_agg):,} trig keys, {total:,.0f} total triggers, {len(ug_agg):,} unique gen keys')
 print(f'  Skipped channels: {skipped_channel}')
@@ -292,6 +299,20 @@ else:
     insert = content.find('\nloadRates().then(loadData)')
     content = content[:insert] + '\n' + embed_ug + content[insert:]
     print(f'  _localUniqueGenData inserted ({len(UG_JSON)//1024}KB, {len(ug_agg)} keys)')
+
+# Replace _localCampTrigData (utm_campaign → trigger count)
+CT_JSON = json.dumps(ct_trig_agg, ensure_ascii=False)
+embed_ct = f'const _localCampTrigData={CT_JSON};'
+existing_ct = content.find('const _localCampTrigData=')
+if existing_ct >= 0:
+    end_ct = content.find(';', existing_ct) + 1
+    if content[end_ct:end_ct+1] == '\n': end_ct += 1
+    content = content[:existing_ct] + embed_ct + '\n' + content[end_ct:]
+    print(f'  _localCampTrigData replaced ({len(CT_JSON)//1024}KB, {len(ct_trig_agg)} campaigns)')
+else:
+    insert = content.find('\nloadRates().then(loadData)')
+    content = content[:insert] + '\n' + embed_ct + content[insert:]
+    print(f'  _localCampTrigData inserted ({len(CT_JSON)//1024}KB, {len(ct_trig_agg)} campaigns)')
 
 # Replace _localHistData (from Historic_data_enterprise.xlsx)
 HIST_XLSX = r'C:\Users\Deepanshi Ahuja\Desktop\Historic_data_enterprise.xlsx'
