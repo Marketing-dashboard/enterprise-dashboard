@@ -1699,7 +1699,8 @@ function renderHistMonthSelector(){
   for(const mo of HIST_ALL_MONTHS){
     const on=_histSelMonths.has(mo);
     const disabled=(!on && selCount>=4)?'disabled':'';
-    h+=`<label class="col-chip${on?' active':''}${disabled?' disabled-chip':''}"><input type="checkbox" ${on?'checked':''} ${disabled} onchange="toggleHistMonth('${mo}',this.checked)">${mo}</label>`;
+    const moEsc=mo.replace(/'/g,"\\'");
+    h+=`<label class="col-chip${on?' active':''}${disabled?' disabled-chip':''}"><input type="checkbox" ${on?'checked':''} ${disabled} onchange="toggleHistMonth('${moEsc}',this.checked)">${mo}</label>`;
   }
   bar.innerHTML=h;
 }
