@@ -222,7 +222,6 @@ tfoot td.comb{background:rgba(226,232,240,.5)}
 
 #dailySection{display:block}
 #demandSection{display:none}
-#campaignSection{display:none}
 tr.ca-model-row td{background:linear-gradient(90deg,#13192e,#1e2a4a);color:#e0e7ff;font-weight:700;font-size:13px;cursor:pointer;border-bottom:2px solid #334155}
 tr.ca-model-row:hover td{background:linear-gradient(90deg,#1a2444,#263566)}
 tr.ca-model-row td.ca-num{color:#e2e8f0;text-align:right}
@@ -284,15 +283,6 @@ th.th-rev,td.rev{color:#0d9488;font-weight:600}
 th.th-mrg,td.mrg-pos{color:#15803d;font-weight:600}
 td.mrg-neg{color:#dc2626;font-weight:600}
 
-/* Campaign Analysis table alignment */
-.ca-table{width:100%;border-collapse:collapse;font-size:12.5px}
-.ca-table col.col-name{width:36%}
-.ca-table col.col-spends,.ca-table col.col-leads,.ca-table col.col-tleads,.ca-table col.col-cpl,.ca-table col.col-tcpl{width:10%}
-.ca-table col.col-pct{width:6%}
-.ca-table thead th{padding:10px 12px;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);text-align:right;border-bottom:2px solid var(--border);background:var(--surface2);white-space:nowrap;position:sticky;top:52px}
-.ca-table thead th:first-child{text-align:left}
-.ca-table td{padding:9px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ca-table td.ca-num{text-align:right;font-variant-numeric:tabular-nums}
 
 /* MOM Analysis */
 #momSection{display:none}
@@ -377,7 +367,6 @@ table tfoot tr td.hist-cell{font-weight:700}
       </div>
       <div class="nav-tabs">
         <button class="nav-tab active" id="tab-daily"    onclick="switchTab('daily')">Daily Performance</button>
-        <button class="nav-tab"        id="tab-campaign" onclick="switchTab('campaign')">Campaign Analysis</button>
         <button class="nav-tab"        id="tab-demand"   onclick="switchTab('demand')">Demand vs Delivery</button>
         <button class="nav-tab"        id="tab-google"   onclick="switchTab('google')">Google Campaigns</button>
         <button class="nav-tab"        id="tab-hist"     onclick="switchTab('hist')">Apr'26-Oct'26</button>
@@ -447,32 +436,6 @@ table tfoot tr td.hist-cell{font-weight:700}
   </div>
 
   <!-- ── CAMPAIGN ANALYSIS SECTION ── -->
-  <div id="campaignSection" style="display:none">
-    <div class="filters">
-      <div class="filter-group">
-        <label>Brand</label>
-        <select id="ca-brand" onchange="renderCampaign()"><option value="">All Brands</option></select>
-      </div>
-      <div class="filter-group">
-        <label>Date Range</label>
-        <div class="date-range">
-          <input type="date" id="ca-from" onchange="renderCampaign()">
-          <span>→</span>
-          <input type="date" id="ca-to" onchange="renderCampaign()">
-        </div>
-      </div>
-      <button class="reset-btn" onclick="document.getElementById('ca-brand').value='';document.getElementById('ca-from').value='';document.getElementById('ca-to').value='';renderCampaign()">Reset</button>
-    </div>
-    <div class="table-wrap">
-      <div class="table-card">
-        <div class="table-header-bar">
-          <span class="table-title">Campaign Analysis — Model › Campaign Type › Date</span>
-          <span class="row-count" id="caRowCount"></span>
-        </div>
-        <div id="campaignContainer"><div class="loading"><div class="spinner"></div><span>Fetching data…</span></div></div>
-      </div>
-    </div>
-  </div>
 
   <!-- GOOGLE CAMPAIGNS SECTION -->
   <div id="googleCampSection" style="display:none">
@@ -1049,16 +1012,13 @@ async function loadData(){
 
 function switchTab(tab){
   document.getElementById('dailySection').style.display    =tab==='daily'   ?'block':'none';
-  document.getElementById('campaignSection').style.display =tab==='campaign'?'block':'none';
   document.getElementById('demandSection').style.display   =tab==='demand'  ?'block':'none';
   document.getElementById('googleCampSection').style.display=tab==='google'  ?'block':'none';
   document.getElementById('histSection').style.display     =tab==='hist'    ?'block':'none';
   document.getElementById('tab-daily').classList.toggle('active',tab==='daily');
-  document.getElementById('tab-campaign').classList.toggle('active',tab==='campaign');
   document.getElementById('tab-demand').classList.toggle('active',tab==='demand');
   document.getElementById('tab-google').classList.toggle('active',tab==='google');
   document.getElementById('tab-hist').classList.toggle('active',tab==='hist');
-  if(tab==='campaign') renderCampaign();
   if(tab==='google') renderGoogleCamp();
   if(tab==='hist'){populateHistFilters();renderHistMonthSelector();renderHistColSelector();renderHist();}
 }
@@ -1078,10 +1038,6 @@ function populateFilters(){
   const bSel=document.getElementById('f-brand'), bcur=bSel.value;
   bSel.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option value="${b}">${b}</option>`).join('');
   if(brands.includes(bcur)) bSel.value=bcur; else bSel.value='';
-  // Populate Campaign Analysis brand filter (same segment filter)
-  const caBSel=document.getElementById('ca-brand'), caBcur=caBSel.value;
-  caBSel.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option value="${b}">${b}</option>`).join('');
-  if(brands.includes(caBcur)) caBSel.value=caBcur; else caBSel.value='';
   const dates=_rows.map(r=>r.date).sort();
   if(dates.length){
     const fd=document.getElementById('f-from'), td=document.getElementById('f-to');
@@ -1300,169 +1256,6 @@ function caBuClass(ct){
   const l=ct.toLowerCase();
   if(l==='ctwa'||l.includes('whatsapp')) return 'ctwa';
   return 'other';
-}
-function renderCampaign(){
-  const cont=document.getElementById('campaignContainer');
-  if(!_ctRows.length){ cont.innerHTML='<div class="empty">No data loaded.</div>'; return; }
-  const brand=document.getElementById('ca-brand').value;
-  const from=document.getElementById('ca-from').value, to=document.getElementById('ca-to').value;
-  const filtered=_ctRows.filter(r=>{
-    if(brand&&r.brand!==brand) return false;
-    if(from&&r.date<from) return false;
-    if(to&&r.date>to) return false;
-    return true;
-  });
-  if(!filtered.length){ cont.innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
-  // Build hierarchy: model → campaignType → date
-  const modelMap={};
-  for(const r of filtered){
-    if(!modelMap[r.model]) modelMap[r.model]={model:r.model,spends:0,leads:0,tleads:0,cts:{}};
-    const m=modelMap[r.model];
-    m.spends+=r.spends; m.leads+=r.leads; m.tleads+=r.tleads;
-    if(!m.cts[r.campaignType]) m.cts[r.campaignType]={ct:r.campaignType,buGroup:r.buGroup,spends:0,leads:0,tleads:0,dates:{}};
-    const c=m.cts[r.campaignType];
-    c.spends+=r.spends; c.leads+=r.leads; c.tleads+=r.tleads;
-    if(!c.dates[r.date]) c.dates[r.date]={date:r.date,spends:0,leads:0,tleads:0};
-    const d=c.dates[r.date];
-    d.spends+=r.spends; d.leads+=r.leads; d.tleads+=r.tleads;
-  }
-  const models=Object.values(modelMap).sort((a,b)=>b.spends-a.spends||a.model.localeCompare(b.model));
-  document.getElementById('caRowCount').textContent=`${models.length} models`;
-  const fmtC2=(s,l)=>l>0?'₹'+Math.round(s/l).toLocaleString('en-IN'):'—';
-  const N=(v,cls='')=>v?`<td class="ca-num${cls?` ${cls}`:''}">${v}</td>`:`<td class="ca-num${cls?` ${cls}`:''}">—</td>`;
-  let h=`<table style="width:100%;border-collapse:collapse">
-<thead>
-<tr style="background:#0f172a;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.06em">
-  <th class="left" style="padding:10px 16px;font-weight:600;min-width:260px">Model / Campaign Type / Date</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600;width:110px">Spends</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600;width:72px;color:var(--text3)">Spend%</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600;width:90px">Leads</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600;width:90px">TLeads</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600;width:80px">CPL</th>
-  <th style="padding:10px 14px;text-align:right;font-weight:600;width:80px">TCPL</th>
-</tr>
-</thead><tbody>`;
-  const tot={s:0,l:0,t:0};
-  const fmtSpendPct=(num,denom)=>denom>0?`${(num/denom*100).toFixed(1)}%`:'—';
-  models.forEach((m,mi)=>{
-    tot.s+=m.spends; tot.l+=m.leads; tot.t+=m.tleads;
-    const ctList=Object.values(m.cts).sort((a,b)=>b.spends-a.spends);
-    h+=`<tr class="ca-model-row" onclick="toggleCaModel(${mi})" data-mi="${mi}">
-  <td style="padding:11px 16px"><span class="expand-icon" id="ca-ei-m${mi}">▶ </span>${escH(m.model)}<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:8px">${ctList.length} campaign type${ctList.length!==1?'s':''}</span></td>
-  <td class="ca-num">${fmtNum(m.spends)}</td><td class="ca-num" style="color:#94a3b8">100%</td>
-  <td class="ca-num">${fmtL(m.leads)}</td>
-  <td class="ca-num">${m.tleads>0?fmtL(m.tleads):'—'}</td>
-  <td class="ca-num">${fmtC2(m.spends,m.leads)}</td><td class="ca-num">${m.tleads>0?fmtC2(m.spends,m.tleads):'—'}</td>
-</tr>`;
-    ctList.forEach((c,ci)=>{
-      const cls=c.buGroup==='Adwords'?'aw':c.buGroup==='MS-FB'?'fb':(c.buGroup||'').toLowerCase().includes('ctwa')||(c.buGroup||'').toLowerCase().includes('whatsapp')?'ctwa':'other';
-      const dateList=Object.values(c.dates).sort((a,b)=>a.date.localeCompare(b.date));
-      const ckId=`${mi}-${ci}`;
-      h+=`<tr class="ca-ct-row ct-${cls} hidden" data-mi="${mi}" data-ck="${ckId}" onclick="toggleCaCT('${ckId}')">
-  <td style="padding:9px 16px 9px 28px"><span class="expand-icon" id="ca-ei-c${ckId}">▶ </span><span class="ca-badge ca-badge-${cls}">${escH(c.ct)}</span></td>
-  <td class="ca-num">${fmtNum(c.spends)}</td><td class="ca-num" style="color:var(--text3);font-size:11px">${fmtSpendPct(c.spends,m.spends)}</td>
-  <td class="ca-num">${fmtL(c.leads)}</td>
-  <td class="ca-num">${c.tleads>0?fmtL(c.tleads):'—'}</td>
-  <td class="ca-num">${fmtC2(c.spends,c.leads)}</td><td class="ca-num">${c.tleads>0?fmtC2(c.spends,c.tleads):'—'}</td>
-</tr>`;
-      for(const d of dateList){
-        h+=`<tr class="ca-date-row hidden" data-ck="${ckId}">
-  <td style="padding:7px 16px 7px 48px;color:var(--text2,#64748b)">${fmtDate(d.date)}</td>
-  <td class="ca-num" style="color:var(--text1)">${fmtNum(d.spends)}</td><td class="ca-num"></td>
-  <td class="ca-num" style="color:var(--text1)">${fmtL(d.leads)}</td>
-  <td class="ca-num" style="color:var(--text1)">${d.tleads>0?fmtL(d.tleads):'—'}</td>
-  <td class="ca-num" style="color:var(--text1)">${fmtC2(d.spends,d.leads)}</td>
-  <td class="ca-num" style="color:var(--text1)">${d.tleads>0?fmtC2(d.spends,d.tleads):'—'}</td>
-</tr>`;
-      }
-    });
-  });
-  h+=`</tbody><tfoot><tr style="background:var(--surface-alt,#f8fafc);font-weight:700;border-top:2px solid var(--border)">
-  <td style="padding:10px 16px">TOTAL</td>
-  <td class="ca-num">${fmtNum(tot.s)}</td><td class="ca-num" style="color:#94a3b8;font-size:11px">—</td>
-  <td class="ca-num">${fmtL(tot.l)}</td>
-  <td class="ca-num">${fmtL(tot.t)}</td>
-  <td class="ca-num">${fmtC2(tot.s,tot.l)}</td><td class="ca-num">${fmtC2(tot.s,tot.t)}</td>
-</tr></tfoot></table>`;
-  cont.innerHTML=h;
-}
-function toggleCaModel(mi){
-  const rows=document.querySelectorAll(`tr.ca-ct-row[data-mi="${mi}"]`);
-  const icon=document.getElementById(`ca-ei-m${mi}`);
-  const hidden=rows[0]&&rows[0].classList.contains('hidden');
-  if(!hidden){
-    document.querySelectorAll(`tr.ca-ct-row[data-mi="${mi}"]`).forEach(r=>{
-      const ck=r.dataset.ck;
-      document.querySelectorAll(`tr.ca-date-row[data-ck="${ck}"]`).forEach(d=>d.classList.add('hidden'));
-      const ei=document.getElementById(`ca-ei-c${ck}`); if(ei) ei.textContent='▶ ';
-    });
-  }
-  rows.forEach(r=>r.classList.toggle('hidden',!hidden));
-  if(icon) icon.textContent=hidden?'▼ ':'▶ ';
-}
-function toggleCaCT(ck){
-  const rows=document.querySelectorAll(`tr.ca-date-row[data-ck="${ck}"]`);
-  const icon=document.getElementById(`ca-ei-c${ck}`);
-  const hidden=rows[0]&&rows[0].classList.contains('hidden');
-  rows.forEach(r=>r.classList.toggle('hidden',!hidden));
-  if(icon) icon.textContent=hidden?'▼ ':'▶ ';
-}
-
-function renderCampaign_UNUSED(){
-  const cont=document.getElementById('campaignContainer');
-  if(!_rows.length){ cont.innerHTML='<div class="empty">No data loaded.</div>'; return; }
-  const month=document.getElementById('c-month').value, brand=document.getElementById('c-brand').value;
-  const segment=document.getElementById('c-segment').value, model=document.getElementById('c-model').value;
-  const filtered=_rows.filter(r=>{
-    if(month&&r.month!==month) return false;
-    if(brand&&r.brand!==brand) return false;
-    if(segment&&r.segment!==segment) return false;
-    if(model&&r.model!==model) return false;
-    return true;
-  });
-  if(!filtered.length){ cont.innerHTML='<div class="empty">No data for selected filters.</div>'; return; }
-  // Aggregate by brand|model
-  const agg={};
-  for(const r of filtered){
-    const k=`${r.brand}|${r.model}`;
-    if(!agg[k]) agg[k]={brand:r.brand,model:r.model,awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0};
-    const a=agg[k];
-    a.awS+=r.awSpend; a.awL+=r.awLeads; a.awT+=r.awTrig;
-    a.fbS+=r.fbSpend; a.fbL+=r.fbLeads; a.fbT+=r.fbTrig;
-    a.ctwaS+=r.ctwaSpend; a.ctwaL+=r.ctwaLeads; a.ctwaT+=r.ctwaTrig;
-    a.cS+=r.combSpend; a.cL+=r.combLeads; a.cT+=r.combTrig;
-  }
-  const rows=Object.values(agg).sort((a,b)=>b.cS-a.cS||a.brand.localeCompare(b.brand)||a.model.localeCompare(b.model));
-  const tot={awS:0,awL:0,awT:0,fbS:0,fbL:0,fbT:0,ctwaS:0,ctwaL:0,ctwaT:0,cS:0,cL:0,cT:0};
-  let h='<table><thead>';
-  h+='<tr class="group-row"><th class="th-fixed left" colspan="2"></th>';
-  h+='<th class="th-aw" colspan="5">📊 Adwords</th>';
-  h+='<th class="th-fb" colspan="5">📱 MS-FB</th>';
-  h+='<th class="th-ctwa" colspan="5">💬 CTWA</th>';
-  h+='<th class="th-comb" colspan="5">🔗 Combined</th></tr>';
-  h+='<tr class="col-row"><th class="th-fixed left">Brand</th><th class="th-fixed left">Model</th>';
-  ['aw','fb','ctwa','comb'].forEach(cls=>{
-    h+=`<th class="${cls} ${cls}-first">Spends</th><th class="${cls}">Leads</th><th class="${cls}">TLeads</th><th class="${cls}">CPL</th><th class="${cls} ${cls}-last">TCPL</th>`;
-  });
-  h+='</tr></thead><tbody>';
-  for(const r of rows){
-    tot.awS+=r.awS; tot.awL+=r.awL; tot.awT+=r.awT;
-    tot.fbS+=r.fbS; tot.fbL+=r.fbL; tot.fbT+=r.fbT;
-    tot.ctwaS+=r.ctwaS; tot.ctwaL+=r.ctwaL; tot.ctwaT+=r.ctwaT;
-    tot.cS+=r.cS; tot.cL+=r.cL; tot.cT+=r.cT;
-    h+=`<tr><td style="font-weight:600">${escH(r.brand)}</td><td>${escH(r.model)}</td>`;
-    h+=`<td class="td-num aw">${fmtNum(r.awS)}</td><td class="td-num aw">${fmtL(r.awL)}</td><td class="td-num aw">${r.awT>0?fmtL(r.awT):''}</td><td class="td-num aw">${fmtC(r.awS,r.awL)}</td><td class="td-num aw">${r.awT>0?fmtC(r.awS,r.awT):''}</td>`;
-    h+=`<td class="td-num fb">${fmtNum(r.fbS)}</td><td class="td-num fb">${fmtL(r.fbL)}</td><td class="td-num fb">${r.fbT>0?fmtL(r.fbT):''}</td><td class="td-num fb">${fmtC(r.fbS,r.fbL)}</td><td class="td-num fb">${r.fbT>0?fmtC(r.fbS,r.fbT):''}</td>`;
-    h+=`<td class="td-num ctwa">${fmtNum(r.ctwaS)}</td><td class="td-num ctwa">${fmtL(r.ctwaL)}</td><td class="td-num ctwa">${r.ctwaT>0?fmtL(r.ctwaT):''}</td><td class="td-num ctwa">${fmtC(r.ctwaS,r.ctwaL)}</td><td class="td-num ctwa">${r.ctwaT>0?fmtC(r.ctwaS,r.ctwaT):''}</td>`;
-    h+=`<td class="td-num comb">${fmtNum(r.cS)}</td><td class="td-num comb">${fmtL(r.cL)}</td><td class="td-num comb">${r.cT>0?fmtL(r.cT):''}</td><td class="td-num comb">${fmtC(r.cS,r.cL)}</td><td class="td-num comb">${r.cT>0?fmtC(r.cS,r.cT):''}</td></tr>`;
-  }
-  h+='</tbody><tfoot><tr><td class="left" colspan="2">TOTAL</td>';
-  h+=`<td class="aw">${fmtNum(tot.awS)}</td><td class="aw">${fmtL(tot.awL)}</td><td class="aw">${fmtL(tot.awT)}</td><td class="aw">${fmtC(tot.awS,tot.awL)}</td><td class="aw">${fmtC(tot.awS,tot.awT)}</td>`;
-  h+=`<td class="fb">${fmtNum(tot.fbS)}</td><td class="fb">${fmtL(tot.fbL)}</td><td class="fb">${fmtL(tot.fbT)}</td><td class="fb">${fmtC(tot.fbS,tot.fbL)}</td><td class="fb">${fmtC(tot.fbS,tot.fbT)}</td>`;
-  h+=`<td class="ctwa">${fmtNum(tot.ctwaS)}</td><td class="ctwa">${fmtL(tot.ctwaL)}</td><td class="ctwa">${fmtL(tot.ctwaT)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaL)}</td><td class="ctwa">${fmtC(tot.ctwaS,tot.ctwaT)}</td>`;
-  h+=`<td class="comb">${fmtNum(tot.cS)}</td><td class="comb">${fmtL(tot.cL)}</td><td class="comb">${fmtL(tot.cT)}</td><td class="comb">${fmtC(tot.cS,tot.cL)}</td><td class="comb">${fmtC(tot.cS,tot.cT)}</td></tr></tfoot></table>`;
-  cont.innerHTML=h;
-  document.getElementById('campRowCount').textContent=`${rows.length} models`;
 }
 
 function renderDemand(){
