@@ -1129,9 +1129,9 @@ function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 // ── KPI column selector ──
 const KPI_DEFS=[
   {key:'spends',  label:'Spends'},
-  {key:'leads',   label:'Leads'},
+  {key:'leads',   label:'Panel Leads'},
   {key:'tleads',  label:'TLeads'},
-  {key:'ugen',    label:'Unique Gen'},
+  {key:'ugen',    label:'LD Leads'},
   {key:'trigpct', label:'Trig %'},
   {key:'pvl',     label:'PVL'},
   {key:'soldcpl', label:'Sold CPL'},
@@ -1378,7 +1378,7 @@ let _histRows=[];
 const MOM_KPIS=[
   {key:'spends', label:'Spends',  derived:false, def:true,
    fmt:(v)=>'Rs.'+Math.round(v).toLocaleString('en-IN')},
-  {key:'leads',  label:'Leads',   derived:false, def:false,
+  {key:'leads',  label:'Panel Leads',   derived:false, def:false,
    fmt:(v)=>Math.round(v).toLocaleString('en-IN')},
   {key:'tleads', label:'TLeads',  derived:false, def:false,
    fmt:(v)=>Math.round(v).toLocaleString('en-IN')},
@@ -1477,7 +1477,7 @@ function renderGoogleCamp(){
     <col class="col-name"><col class="col-spends"><col class="col-leads"><col class="col-cpl"><col class="col-tleads"><col class="col-tcpl">
   </colgroup><thead><tr>
     <th style="text-align:left">Campaign</th>
-    <th>MTD Spends</th><th>MTD Leads</th><th>CPL</th>
+    <th>MTD Spends</th><th>MTD Panel Leads</th><th>CPL</th>
     <th>Triggered Leads</th><th>TCPL</th>
   </tr></thead><tbody>`;
 
@@ -1513,8 +1513,8 @@ const HIST_ALL_MONTHS=["Apr'26","May'26","Jun'26","Jul'26","Aug'26","Sep'26","Oc
 let HIST_MONTHS=[...HIST_ALL_MONTHS]; // updated by selection
 const HIST_KPI_DEFS=[
   {key:'spends',  label:'Spends'},
-  {key:'leads',   label:'Leads'},
-  {key:'ugen',    label:'Unique Gen'},
+  {key:'leads',   label:'Panel Leads'},
+  {key:'ugen',    label:'LD Leads'},
   {key:'tleads',  label:'TLeads'},
   {key:'trigpct', label:'Trig %'},
   {key:'pvl',     label:'PVL'},
