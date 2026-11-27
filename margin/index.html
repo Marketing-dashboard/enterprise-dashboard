@@ -720,6 +720,12 @@ function monthLabel(dateStr){
   return `${_MO_NAMES[+p[1]]}'${p[0].slice(2)}`;
 }
 
+function normCTLabel(ct, buGroup){
+  if(buGroup==='Adwords'||buGroup==='Adwords_IMS') return 'Media Sales-GA';
+  if(buGroup==='MS-FB') return 'Media Sales-FB';
+  if(buGroup==='CTWA') return 'Media sales-Whatsapp';
+  return ct;
+}
 function getBuGroup(bu){
   const l=(bu||'').toLowerCase();
   if(l==='adwords_ims') return 'Adwords_IMS';
@@ -952,7 +958,7 @@ async function loadData(){
       const tkL=`${ck}|${buKey.toLowerCase()}`;
       const tleads=trigMap[tkL]||0;
       ctRowKeys.add(tkL);
-      _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:v.bu,buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads,tleads});
+      _ctRows.push({date:v.date,brand:v.brand,model:v.model,campaignType:normCTLabel(v.bu,v.buGroup),buGroup:v.buGroup,month:v.month,segment:v.segment,spends:v.spends,leads:v.leads,tleads});
     }
     // Build brand/model display-name lookup from comboMeta (keyed by brandL|modelL, any date)
     const modelDispMap={};
@@ -969,7 +975,8 @@ async function loadData(){
       if(!disp) continue;
       const ct=origCTMap[k]||p[3];
       const seg=(modelDispMap[bmk]||{}).segment||refSeg[bmk]||brandRefSeg[brandL]||segMap[`${date}|${bmk}`]||getSegment(disp.brand,disp.model);
-      _ctRows.push({date,brand:disp.brand,model:disp.model,campaignType:ct,buGroup:getBuGroup(ct),month:monthLabel(date),segment:seg,spends:0,leads:0,tleads:trig});
+      const ctBuGroup=getBuGroup(ct);
+      _ctRows.push({date,brand:disp.brand,model:disp.model,campaignType:normCTLabel(ct,ctBuGroup),buGroup:ctBuGroup,month:monthLabel(date),segment:seg,spends:0,leads:0,tleads:trig});
     }
     // Aggregate spend/leads per channel (Adwords / MS-FB / CTWA) — lowercase keys
     const awMap={}, fbMap={}, ctwaMap={}, imsMap={};
