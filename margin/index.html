@@ -336,11 +336,44 @@ td.mrg-neg{color:#dc2626;font-weight:600}
 .col-chip.active{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
 .col-chip.disabled-chip{opacity:.4;cursor:not-allowed}
 /* ── HIST TAB ── */
-.hist-m-even{background:#f0eeff!important}
-.hist-m-odd{background:#fff!important}
-.hist-m-even-hd{background:linear-gradient(135deg,#ede9fe,#dbeafe);color:#4338ca;font-weight:700}
-.hist-m-odd-hd{background:#f4f6fc;color:#3d5068;font-weight:600}
-.hist-mo-span{text-align:center;padding:5px 8px;font-size:11px;font-weight:700;letter-spacing:.04em;border-bottom:2px solid var(--border)}
+/* Month palette — up to 8 months, each a distinct color */
+.hist-mo-span{text-align:center;padding:7px 8px;font-size:11px;font-weight:800;letter-spacing:.06em;border-bottom:3px solid rgba(255,255,255,.35);text-shadow:0 1px 2px rgba(0,0,0,.15)}
+/* header row (group span + KPI sub-row) */
+.hist-m-hd-0{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff}
+.hist-m-hd-1{background:linear-gradient(135deg,#0891b2,#06b6d4);color:#fff}
+.hist-m-hd-2{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
+.hist-m-hd-3{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff}
+.hist-m-hd-4{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff}
+.hist-m-hd-5{background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff}
+.hist-m-hd-6{background:linear-gradient(135deg,#0d9488,#2dd4bf);color:#fff}
+.hist-m-hd-7{background:linear-gradient(135deg,#be185d,#ec4899);color:#fff}
+/* sub-header KPI row — slightly darker shade */
+.hist-m-kpi-0{background:rgba(79,70,229,.12);color:#3730a3;font-weight:600}
+.hist-m-kpi-1{background:rgba(8,145,178,.12);color:#0e7490;font-weight:600}
+.hist-m-kpi-2{background:rgba(5,150,105,.12);color:#065f46;font-weight:600}
+.hist-m-kpi-3{background:rgba(217,119,6,.12);color:#92400e;font-weight:600}
+.hist-m-kpi-4{background:rgba(220,38,38,.12);color:#991b1b;font-weight:600}
+.hist-m-kpi-5{background:rgba(124,58,237,.12);color:#4c1d95;font-weight:600}
+.hist-m-kpi-6{background:rgba(13,148,136,.12);color:#134e4a;font-weight:600}
+.hist-m-kpi-7{background:rgba(190,24,93,.12);color:#831843;font-weight:600}
+/* cell body tints */
+.hist-m-0{background:rgba(99,102,241,.05)!important}
+.hist-m-1{background:rgba(6,182,212,.05)!important}
+.hist-m-2{background:rgba(16,185,129,.05)!important}
+.hist-m-3{background:rgba(245,158,11,.06)!important}
+.hist-m-4{background:rgba(239,68,68,.05)!important}
+.hist-m-5{background:rgba(167,139,250,.06)!important}
+.hist-m-6{background:rgba(45,212,191,.05)!important}
+.hist-m-7{background:rgba(236,72,153,.05)!important}
+/* left border per month to separate columns visually */
+.hist-m-first-0{border-left:3px solid #6366f1}
+.hist-m-first-1{border-left:3px solid #06b6d4}
+.hist-m-first-2{border-left:3px solid #10b981}
+.hist-m-first-3{border-left:3px solid #f59e0b}
+.hist-m-first-4{border-left:3px solid #ef4444}
+.hist-m-first-5{border-left:3px solid #a78bfa}
+.hist-m-first-6{border-left:3px solid #2dd4bf}
+.hist-m-first-7{border-left:3px solid #ec4899}
 table tfoot tr td.hist-cell{font-weight:700}
 .ct-tag{display:inline-flex;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
 .ct-tag.ct-aw{background:var(--aw-bg);color:var(--aw)}
@@ -1662,16 +1695,15 @@ function renderHist(){
   // Build header rows
   let h='<table><thead>';
   h+='<tr>';
-  h+='<th class="s0 left" rowspan="2">Brand</th><th class="s1 left" rowspan="2">Model</th>';
+  h+='<th class="s0 left" rowspan="2" style="background:var(--surface2);z-index:12">Brand</th><th class="s1 left" rowspan="2" style="background:var(--surface2);z-index:12">Model</th>';
   activeMos.forEach((mo,mi)=>{
-    const cls=mi%2===0?'hist-m-even-hd':'hist-m-odd-hd';
-    h+=`<th class="${cls} hist-mo-span" colspan="${kc}">${mo}</th>`;
+    h+=`<th class="hist-m-hd-${mi%8} hist-mo-span" colspan="${kc}">${mo}</th>`;
   });
   h+='</tr><tr>';
   activeMos.forEach((mo,mi)=>{
-    const cls=mi%2===0?'hist-m-even-hd':'hist-m-odd-hd';
-    visKPIs.forEach(k=>{
-      h+=`<th class="${cls}" style="font-size:10px;padding:4px 6px">${k.label}</th>`;
+    visKPIs.forEach((k,ki)=>{
+      const first=ki===0?` hist-m-first-${mi%8}`:'';
+      h+=`<th class="hist-m-kpi-${mi%8}${first}" style="font-size:10px;padding:5px 7px;white-space:nowrap">${k.label}</th>`;
     });
   });
   h+='</tr></thead><tbody>';
@@ -1681,8 +1713,10 @@ function renderHist(){
     h+=`<tr><td class="s0">${escH(r.brand)}</td><td class="s1">${escH(r.model)}</td>`;
     activeMos.forEach((mo,mi)=>{
       const d=r.months[mo]||null;
-      const cls=mi%2===0?'hist-m-even':'hist-m-odd';
-      visKPIs.forEach(k=>{ h+=hCell(d,k.key,cls); });
+      visKPIs.forEach((k,ki)=>{
+        const first=ki===0?` hist-m-first-${mi%8}`:'';
+        h+=hCell(d,k.key,`hist-m-${mi%8}${first}`);
+      });
     });
     h+='</tr>';
   }
@@ -1698,11 +1732,13 @@ function renderHist(){
     }
   }
   h+='</tbody><tfoot><tr>';
-  h+='<td class="s0 left" style="font-weight:700" colspan="2">TOTAL</td>';
+  h+='<td class="s0 left" style="font-weight:700;background:var(--surface2)" colspan="2">TOTAL</td>';
   activeMos.forEach((mo,mi)=>{
     const d=tot[mo]||null;
-    const cls=mi%2===0?'hist-m-even':'hist-m-odd';
-    visKPIs.forEach(k=>{ h+=hCell(d,k.key,cls); });
+    visKPIs.forEach((k,ki)=>{
+      const first=ki===0?` hist-m-first-${mi%8}`:'';
+      h+=hCell(d,k.key,`hist-m-${mi%8}${first}`);
+    });
   });
   h+='</tr></tfoot></table>';
 
